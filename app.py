@@ -1,7 +1,10 @@
+# app.py — fully ordered and fixed
+
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import time
-import streamlit.components.v1 as components
+
 from fraud_modules import credit_card
 from fraud_modules import paysim
 from fraud_modules import loan
@@ -59,14 +62,13 @@ with fraud_tabs[0]:
 
             plot_bar(scores)
             plot_heatmap(df)
-            # SHAP visualization using RF model only for speed
             from fraud_modules.credit_card import models
             if 'rf' in models:
                 plot_shap_summary(models['rf'], processed_df)
 
             st.markdown("---")
             st.caption("🔎 Powered by 6 AI Models | Real-time Risk Estimation + SHAP Insights")
-           
+
 with fraud_tabs[1]:
     st.header("📱 Mobile Transaction Fraud (PaySim)")
     uploaded_file = st.file_uploader("Upload PaySim Dataset CSV", type=["csv"], key="paysim")
@@ -95,6 +97,8 @@ with fraud_tabs[1]:
             if 'rf' in paysim_models:
                 plot_shap_summary(paysim_models['rf'], processed_df)
 
+            st.markdown("---")
+            st.caption("🔎 Powered by 6 AI Models | Real-time Risk Estimation + SHAP Insights")
 
 with fraud_tabs[2]:
     st.header("🏦 Loan Application Fraud")
@@ -124,6 +128,8 @@ with fraud_tabs[2]:
             if 'rf' in loan_models:
                 plot_shap_summary(loan_models['rf'], processed_df)
 
+            st.markdown("---")
+            st.caption("🔎 Powered by 6 AI Models | Real-time Risk Estimation + SHAP Insights")
 
 with fraud_tabs[3]:
     st.header("🚗 Vehicle Loan Fraud")
@@ -153,8 +159,5 @@ with fraud_tabs[3]:
             if 'rf' in vehicle_models:
                 plot_shap_summary(vehicle_models['rf'], processed_df)
 
-
- st.markdown("---")
+            st.markdown("---")
             st.caption("🔎 Powered by 6 AI Models | Real-time Risk Estimation + SHAP Insights")
-           
-
