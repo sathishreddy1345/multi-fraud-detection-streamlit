@@ -3,6 +3,8 @@ import pandas as pd
 import time
 import streamlit.components.v1 as components
 from fraud_modules import credit_card
+from fraud_modules import paysim
+from fraud_modules import loan
 from utils.visualizer import plot_bar, plot_heatmap, plot_shap_summary
 
 st.set_page_config(page_title="🛡️ Multi-Fraud Detection Dashboard", layout="wide", page_icon="💳")
@@ -63,3 +65,66 @@ with fraud_tabs[0]:
 
             st.markdown("---")
             st.caption("🔎 Powered by 6 AI Models | Real-time Risk Estimation + SHAP Insights")
+           
+with fraud_tabs[1]:
+    st.header("📱 Mobile Transaction Fraud (PaySim)")
+    uploaded_file = st.file_uploader("Upload PaySim Dataset CSV", type=["csv"], key="paysim")
+
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        st.dataframe(df.head(), use_container_width=True)
+
+        if st.button("🔍 Predict PaySim Fraud"):
+            with st.spinner("Running models on mobile transaction fraud data..."):
+                time.sleep(2)
+                combined, scores, processed_df = paysim.predict_paysim_fraud(df)
+
+            st.success(f"📱 Fraud Score: {combined*100:.2f}%")
+
+            if combined > 0.5:
+                st.error("🚨 Fraud likely in PaySim dataset")
+                st.balloons()
+            else:
+                st.success("✅ Transactions appear safe.")
+                st.snow()
+
+            plot_bar(scores)
+            plot_heatmap(df)
+            from fraud_modules.paysim import models as paysim_models
+            if 'rf' in paysim_models:
+                plot_shap_summary(paysim_models['rf'], processed_df)
+
+
+with fraud_tabs[2]:
+    st.header("🏦 Loan Application Fraud")
+    uploaded_file = st.file_uploader("Upload Loan Dataset CSV", type=["csv"], key="loan")
+
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        st.dataframe(df.head(), use_container_width=True)
+
+        if st.button("🔍 Predict Loan Fraud"):
+            with st.spinner("Running loan fraud prediction models..."):
+                time.sleep(2)
+                combined, scores, processed_df = loan.predict_loan_fraud(df)
+
+            st.success(f"🏦 Fraud Score: {combined*100:.2f}%")
+
+            if combined > 0.5:
+                st.error("🚨 Potential loan fraud detected")
+                st.balloons()
+            else:
+                st.success("✅ Loan application appears safe.")
+                st.snow()
+
+            plot_bar(scores)
+            plot_heatmap(df)
+            from fraud_modules.loan import models as loan_models
+            if 'rf' in loan_models:
+                plot_shap_summary(loan_models['rf'], processed_df)
+
+
+ st.markdown("---")
+            st.caption("🔎 Powered by 6 AI Models | Real-time Risk Estimation + SHAP Insights")
+           
+
