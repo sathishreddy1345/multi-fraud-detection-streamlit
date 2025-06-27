@@ -5,6 +5,7 @@ import streamlit.components.v1 as components
 from fraud_modules import credit_card
 from fraud_modules import paysim
 from fraud_modules import loan
+from fraud_modules import vehicle_loan
 from utils.visualizer import plot_bar, plot_heatmap, plot_shap_summary
 
 st.set_page_config(page_title="🛡️ Multi-Fraud Detection Dashboard", layout="wide", page_icon="💳")
@@ -122,6 +123,35 @@ with fraud_tabs[2]:
             from fraud_modules.loan import models as loan_models
             if 'rf' in loan_models:
                 plot_shap_summary(loan_models['rf'], processed_df)
+
+
+with fraud_tabs[3]:
+    st.header("🚗 Vehicle Loan Fraud")
+    uploaded_file = st.file_uploader("Upload Vehicle Loan Dataset CSV", type=["csv"], key="vehicle")
+
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        st.dataframe(df.head(), use_container_width=True)
+
+        if st.button("🔍 Predict Vehicle Loan Fraud"):
+            with st.spinner("Analyzing vehicle loan fraud risk..."):
+                time.sleep(2)
+                combined, scores, processed_df = vehicle_loan.predict_vehicle_loan_fraud(df)
+
+            st.success(f"🚗 Fraud Score: {combined*100:.2f}%")
+
+            if combined > 0.5:
+                st.error("🚨 Suspicious vehicle loan detected")
+                st.balloons()
+            else:
+                st.success("✅ No signs of vehicle loan fraud.")
+                st.snow()
+
+            plot_bar(scores)
+            plot_heatmap(df)
+            from fraud_modules.vehicle_loan import models as vehicle_models
+            if 'rf' in vehicle_models:
+                plot_shap_summary(vehicle_models['rf'], processed_df)
 
 
  st.markdown("---")
