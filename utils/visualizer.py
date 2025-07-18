@@ -24,22 +24,20 @@ def plot_heatmap(df: pd.DataFrame):
 
 
 # 🧠 SHAP Summary Plot (Safe Version)
-def plot_shap_summary(model, X_input):
-    st.subheader("🧠 SHAP Explanation (RandomForest)")
+def plot_shap_summary(model, X):
+    st.subheader("📊 SHAP Summary Plot")
+
     try:
-        # Ensure the input has enough samples (SHAP fails on 1 row often)
-        if X_input.shape[0] < 2:
-            st.warning("⚠️ SHAP requires at least 2 rows for beeswarm plot.")
-            return
-
-        # Use TreeExplainer for tree-based models
         explainer = shap.Explainer(model)
-        shap_values = explainer(X_input)
+        shap_values = explainer(X)
 
-        # Render beeswarm plot
-        fig = plt.figure()
-        shap.plots.beeswarm(shap_values, show=False)
-        st.pyplot(fig)
+        if X.shape[0] < 2:
+            st.warning("⚠️ SHAP beeswarm needs at least 2 rows — using waterfall plot instead.")
+            fig = shap.plots.waterfall(shap_values[0], show=False)
+            st.pyplot(fig)
+        else:
+            fig = shap.plots.beeswarm(shap_values, show=False)
+            st.pyplot(fig)
 
     except Exception as e:
         st.error("❌ SHAP summary plot failed.")
