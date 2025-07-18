@@ -1,41 +1,38 @@
-# fraud_modules/credit_card.py
-
 import pandas as pd
+import numpy as np
 import pickle
 from sklearn.preprocessing import StandardScaler
 
-# 📦 Load pre-trained models
+# Load trained models
 models = {}
-model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
-for name in model_names:
-    try:
-        with open(f"models/creditcard_{name}.pkl", "rb") as f:
-            models[name] = pickle.load(f)
-    except Exception as e:
-        print(f"⚠️ Could not load model {name}: {e}")
+for model_name in ['rf', 'xgb', 'lgbm', 'cat', 'lr']:
+    with open(f"models/credit_card_{model_name}.pkl", "rb") as f:
+        models[model_name] = pickle.load(f)
 
-# 🧠 Predict Credit Card Fraud
-def predict_creditcard_fraud(df: pd.DataFrame):
-    # 💡 Preprocessing
+def predict_creditcard_fraud(df):
+    df = df.copy()
+
+    # Drop target column if present
     if 'Class' in df.columns:
-        df = df.drop(columns=['Class'])  # drop label if present
-    X = df.copy()
-    
-    # Normalize features
+        df = df.drop(columns=['Class'])
+
+    # Drop non-numeric columns if any (example: transaction_id)
+    df = df.select_dtypes(include=[np.number])
+
+    # Fill or drop missing values
+    df = df.fillna(0)
+
+    # Scale features
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_scaled = scaler.fit_transform(df)
 
-    scores = {}
+    # Predict with all models
+    model_scores = {}
     for name, model in models.items():
-        if name == "iso":
-            pred = -model.decision_function(X_scaled)
-            score = pred.mean()
-        else:
-            pred = model.predict_proba(X_scaled)[:, 1]
-            score = pred.mean()
-        scores[name] = round(score, 4)
+        prob = model.predict_proba(X_scaled)[:, 1].mean()
+        model_scores[name] = prob
 
-    # 🔢 Weighted score (you can customize this logic)
-    combined_score = sum(scores.values()) / len(scores)
+    # Combine score (average)
+    final_score = np.mean(list(model_scores.values()))
 
-    return combined_score, scores, X  # X is processed input for SHAP
+    return final_score, model_scores, df
