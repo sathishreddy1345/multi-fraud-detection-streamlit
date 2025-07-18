@@ -1,4 +1,14 @@
 # app.py (Final Enhanced Version with Fixes)
+from utils.visualizer import (
+    plot_bar,
+    plot_shap_summary,
+    plot_pie_chart,
+    plot_confusion_report,
+    get_model_description,
+    download_shap_summary_as_png
+)
+
+
 
 import streamlit as st
 import pandas as pd
@@ -131,6 +141,16 @@ if selected_tab in fraud_modules:
                 time.sleep(1)
                 fn = function_map[selected_tab]
                 score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
+                # Show model scores
+                plot_bar(model_scores)
+                
+                # SHAP explanation (Random Forest by default)
+                if 'rf' in credit_card.models:
+                    plot_shap_summary(credit_card.models['rf'], processed)
+                
+                # Fraud likelihood pie chart
+                plot_pie_chart(score)
+
 
             st.success(f"🧠 Final Score: {score*100:.2f}% Fraud Likely")
             plot_bar(model_scores)
