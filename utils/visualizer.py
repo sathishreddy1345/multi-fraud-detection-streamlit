@@ -26,13 +26,19 @@ def plot_shap_summary(model, X):
             st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
 
             try:
-                # Multi-class SHAP object
+                # Check if SHAP values are multi-class (3D shape: samples × classes × features)
                 if hasattr(shap_values, 'shape') and len(shap_values.shape) == 3:
                     st.info("Multi-class model detected — showing class 0 explanation.")
-                    single_explanation = shap_values[0, 0]
+
+                    # Create a proper SHAP Explanation for the first row, first class
+                    single_explanation = shap.Explanation(
+                        values=shap_values.values[0, 0],
+                        base_values=shap_values.base_values[0, 0],
+                        data=shap_values.data[0],
+                        feature_names=shap_values.feature_names
+                    )
                     shap.plots.waterfall(single_explanation, show=False)
 
-                # Single-output explanation (shap.Explanation)
                 else:
                     shap.plots.waterfall(shap_values[0], show=False)
 
