@@ -1,4 +1,4 @@
-
+# app.py (Final Enhanced Version with Fixes)
 
 import streamlit as st
 import pandas as pd
@@ -21,8 +21,6 @@ if st.sidebar.button("🔁 Reset App"):
     st.session_state.clear()
     st.rerun()
 
-
-
 # Sidebar Model Info
 if "Model Info" not in st.session_state:
     st.session_state["Model Info"] = {
@@ -32,7 +30,6 @@ if "Model Info" not in st.session_state:
         "🚗 Insurance": "CatBoost + Ensemble | Imbalanced friendly"
     }
 
-# Show model explanations
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🤖 Model Explanation")
 model_descriptions = st.session_state["Model Info"]
@@ -40,7 +37,7 @@ for name, desc in model_descriptions.items():
     with st.sidebar.expander(name):
         st.markdown(desc)
 
-# Starfield CSS + canvas
+# Starfield background animation
 st.markdown(f"""
     <style>
         body {{ background: linear-gradient(-45deg, {bg_color}, #203a43, #2c5364); background-size: 400% 400%; animation: gradientBG 20s ease infinite; color: {font_color}; }}
@@ -84,26 +81,43 @@ setInterval(draw, 1000/FPS);
 </script>
 """, height=0)
 
-# Fraud Tab Routing
+# Tab Mapping
 fraud_modules = {
     "💳 Credit Card": credit_card,
     "📱 PaySim": paysim,
     "🏦 Loan": loan,
     "🚗 Insurance": insurance
 }
+function_map = {
+    "💳 Credit Card": "predict_creditcard_fraud",
+    "📱 PaySim": "predict_paysim_fraud",
+    "🏦 Loan": "predict_loan_fraud",
+    "🚗 Insurance": "predict_insurance_fraud"
+}
+
 tabs = ["🏠 Home"] + list(fraud_modules.keys())
 selected_tab = st.sidebar.radio("Select Fraud Type:", tabs)
 
+# Home
 if selected_tab == "🏠 Home":
     st.title("🛡️ Multi-Fraud Detection System")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💳 Credit Card Fraud"): st.session_state["page"] = "💳 Credit Card"; st.rerun()
-        if st.button("🏦 Loan Fraud"): st.session_state["page"] = "🏦 Loan"; st.rerun()
+        if st.button("💳 Credit Card Fraud"):
+            st.session_state["page"] = "💳 Credit Card"
+            st.rerun()
+        if st.button("🏦 Loan Fraud"):
+            st.session_state["page"] = "🏦 Loan"
+            st.rerun()
     with col2:
-        if st.button("📱 PaySim Fraud"): st.session_state["page"] = "📱 PaySim"; st.rerun()
-        if st.button("🚗 Insurance Fraud"): st.session_state["page"] = "🚗 Insurance"; st.rerun()
+        if st.button("📱 PaySim Fraud"):
+            st.session_state["page"] = "📱 PaySim"
+            st.rerun()
+        if st.button("🚗 Insurance Fraud"):
+            st.session_state["page"] = "🚗 Insurance"
+            st.rerun()
 
+# Model Pages
 if selected_tab in fraud_modules:
     st.title(f"{selected_tab} Fraud Detection")
     uploaded = st.file_uploader("📥 Upload CSV", type="csv")
@@ -113,27 +127,24 @@ if selected_tab in fraud_modules:
 
         if st.button("🔍 Predict Fraud"):
             st.audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg", autoplay=True)
-            with st.spinner("Analyzing with 6 AI models..."):
+            with st.spinner("Analyzing with AI models..."):
                 time.sleep(1)
-                fn = f"predict_{selected_tab.lower().split()[0]}_fraud"
-                score, model_scores, processed = fraud_modules[selected_tab].__getattribute__(fn)(df)
+                fn = function_map[selected_tab]
+                score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
 
             st.success(f"🧠 Final Score: {score*100:.2f}% Fraud Likely")
             plot_bar(model_scores)
             plot_shap_summary(fraud_modules[selected_tab].models['rf'], processed)
 
-            # Export result
             if st.button("⬇️ Download Results"):
                 result_df = df.copy()
                 result_df['FraudScore'] = score
                 csv = result_df.to_csv(index=False).encode('utf-8')
                 st.download_button("📥 Download as CSV", data=csv, file_name="fraud_results.csv")
 
-            # Scoreboard
             st.markdown("### 📊 Scoreboard")
             st.bar_chart(pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score']))
 
-            # Confusion Matrix (only if ground truth present)
             if 'actual' in df.columns:
                 y_true = df['actual']
                 y_pred = [1 if model_scores['rf'] > 0.5 else 0]*len(df)
@@ -144,7 +155,7 @@ if selected_tab in fraud_modules:
                 ax.set_ylabel("Actual")
                 st.pyplot(fig)
 
-# Placeholder for future chatbot
+# Future chatbot
 with st.sidebar.expander("💬 Assistant (Coming Soon)"):
     st.info("Ask me anything about fraud detection.")
     st.text_input("💡 Example: How does the model detect anomalies?")
