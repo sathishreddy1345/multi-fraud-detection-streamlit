@@ -14,7 +14,8 @@ catboost
 # Visualization
 matplotlib
 seaborn
-shap
+shap>=0.44.1
+
 
 # Streamlit Extensions (optional for UI)
 streamlit-extras
