@@ -1,7 +1,7 @@
 # fraud_modules/credit_card.py
 models = {}
 for model_name in ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']:
-    with open(f"models/creditcard_{model_name}.pkl", "rb") as f:
+    with open(f"models/credit_card_{model_name}.pkl", "rb") as f:
         models[model_name] = pickle.load(f)
 
 import pandas as pd
