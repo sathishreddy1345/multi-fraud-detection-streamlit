@@ -1,58 +1,49 @@
-import matplotlib.pyplot as plt
+# utils/visualizer.py
+
 import streamlit as st
-import seaborn as sns
 import shap
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import pandas as pd
 
-# 📊 Bar chart of model scores
+# 📊 Overall bar chart for all model scores
 def plot_bar(model_scores):
-    if not model_scores:
-        st.warning("⚠️ No model scores to display.")
-        return
-    fig, ax = plt.subplots()
-    ax.barh(list(model_scores.keys()), list(model_scores.values()), color='skyblue')
-    ax.set_xlabel("Predicted Fraud Probability")
-    ax.set_title("🔍 Model Predictions")
-    st.pyplot(fig)
+    st.subheader("📊 Model Prediction Confidence")
+    df = pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score'])
+    df = df.sort_values(by='Score', ascending=False)
+    st.bar_chart(df)
 
-# 🔎 SHAP summary/waterfall plots
-def plot_shap_summary(model, X):
-    st.subheader("🧠 SHAP Explanation")
+# 🔍 Detailed model insights
+def plot_model_insight(model_name, model, X_processed):
+    st.markdown(f"## 🔎 Insights for `{model_name.upper()}` model")
 
-    try:
-        explainer = shap.Explainer(model, X)
-        shap_values = explainer(X)
+    if hasattr(model, 'feature_importances_'):
+        importances = model.feature_importances_
+        feat_names = X_processed.columns if isinstance(X_processed, pd.DataFrame) else [f'Feature {i}' for i in range(len(importances))]
+        sorted_idx = np.argsort(importances)[-10:]
 
-        if len(X) < 2:
-            st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
+        st.write("### 🔥 Top Features by Importance")
+        fig, ax = plt.subplots()
+        sns.barplot(x=importances[sorted_idx], y=np.array(feat_names)[sorted_idx], ax=ax)
+        st.pyplot(fig)
 
-            try:
-                # Check if SHAP values are multi-class (3D shape: samples × classes × features)
-                if hasattr(shap_values, 'shape') and len(shap_values.shape) == 3:
-                    st.info("Multi-class model detected — showing class 0 explanation.")
+    if model_name != 'iso':  # Skip SHAP for Isolation Forest
+        try:
+            explainer = shap.Explainer(model, X_processed)
+            shap_values = explainer(X_processed)
 
-                    # Create a proper SHAP Explanation for the first row, first class
-                    single_explanation = shap.Explanation(
-                        values=shap_values.values[0, 0],
-                        base_values=shap_values.base_values[0, 0],
-                        data=shap_values.data[0],
-                        feature_names=shap_values.feature_names
-                    )
-                    shap.plots.waterfall(single_explanation, show=False)
+            st.write("### 🧠 SHAP Explanation")
+            if len(X_processed) < 2:
+                st.warning("SHAP needs ≥2 rows — showing waterfall plot for row 0.")
+                try:
+                    fig = shap.plots.waterfall(shap_values[0], show=False)
+                    st.pyplot(bbox_inches='tight')
+                except Exception as e:
+                    st.error(f"❌ Waterfall plot failed:\n\n{e}")
+            else:
+                fig = shap.plots.beeswarm(shap_values, show=False)
+                st.pyplot(bbox_inches='tight')
 
-                else:
-                    shap.plots.waterfall(shap_values[0], show=False)
-
-                st.pyplot(plt.gcf())
-
-            except Exception as e:
-                st.error(f"❌ Waterfall plot failed:\n\n{str(e)}")
-
-        else:
-            try:
-                shap.plots.beeswarm(shap_values, show=False)
-                st.pyplot(plt.gcf())
-            except Exception as e:
-                st.error(f"❌ SHAP beeswarm failed:\n\n{str(e)}")
-
-    except Exception as e:
-        st.error(f"❌ SHAP explainer error:\n\n{str(e)}")
+        except Exception as e:
+            st.error(f"❌ SHAP plot failed:\n\n{e}")
