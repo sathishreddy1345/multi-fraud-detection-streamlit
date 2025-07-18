@@ -1,6 +1,4 @@
-app.py 
 
-# app.py (Extended Version with Pro Features)
 
 import streamlit as st
 import pandas as pd
