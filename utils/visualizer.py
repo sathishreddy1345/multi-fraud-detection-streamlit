@@ -25,11 +25,6 @@ def plot_heatmap(df: pd.DataFrame):
 
 # 🧠 SHAP Summary Plot (Safe Version)
 
-
-import shap
-import streamlit as st
-import matplotlib.pyplot as plt
-
 def plot_shap_summary(model, X):
     st.subheader("📊 SHAP Explanation")
 
@@ -40,15 +35,24 @@ def plot_shap_summary(model, X):
         if X.shape[0] == 1:
             st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
 
-            # Handle multi-class outputs safely
             try:
-                if len(shap_values.shape) == 3:  # Multi-class: (samples, classes, features)
+                if hasattr(shap_values, 'values') and shap_values.values.ndim == 3:
                     st.info("Multi-class model detected — showing class 0 by default.")
-                    fig = shap.plots.waterfall(shap_values[0][0], show=False)
-                else:  # Binary or regression
+                    class_idx = 0  # or let user select with st.selectbox
+                    # Create a single Explanation object manually
+                    explanation = shap.Explanation(
+                        values=shap_values.values[0][class_idx],
+                        base_values=shap_values.base_values[0][class_idx],
+                        data=shap_values.data[0],
+                        feature_names=shap_values.feature_names
+                    )
+                    fig = shap.plots.waterfall(explanation, show=False)
+                else:
+                    # Binary classification or regression
                     fig = shap.plots.waterfall(shap_values[0], show=False)
 
                 st.pyplot(fig)
+
             except Exception as we:
                 st.error("❌ Waterfall plot failed:")
                 st.code(str(we))
