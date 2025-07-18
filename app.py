@@ -19,7 +19,8 @@ font_color = "#ffffff" if mode == "Dark Mode" else "#111111"
 # Reset Button
 if st.sidebar.button("🔁 Reset App"):
     st.session_state.clear()
-    st.experimental_rerun()
+    st.rerun()
+
 
 
 # Sidebar Model Info
