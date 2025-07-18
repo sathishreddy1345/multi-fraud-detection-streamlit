@@ -1,0 +1,20 @@
+
+
+# Core
+streamlit>=1.25.0
+pandas
+numpy
+scikit-learn
+
+# ML Models
+xgboost
+lightgbm
+catboost
+
+# Visualization
+matplotlib
+seaborn
+shap
+
+# Streamlit Extensions (optional for UI)
+streamlit-extras
