@@ -25,20 +25,22 @@ def plot_heatmap(df: pd.DataFrame):
 
 # 🧠 SHAP Summary Plot (Safe Version)
 def plot_shap_summary(model, X):
-    st.subheader("📊 SHAP Summary Plot")
+    st.subheader("📊 SHAP Explanation (RandomForest)")
 
     try:
         explainer = shap.Explainer(model)
         shap_values = explainer(X)
 
         if X.shape[0] < 2:
-            st.warning("⚠️ SHAP beeswarm needs at least 2 rows — using waterfall plot instead.")
-            fig = shap.plots.waterfall(shap_values[0], show=False)
+            st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            shap.plots.waterfall(shap_values[0], show=False)
             st.pyplot(fig)
         else:
-            fig = shap.plots.beeswarm(shap_values, show=False)
+            fig, ax = plt.subplots(figsize=(12, 8))
+            shap.plots.beeswarm(shap_values, show=False)
             st.pyplot(fig)
 
     except Exception as e:
-        st.error("❌ SHAP summary plot failed.")
+        st.error("❌ SHAP plot failed:")
         st.code(str(e))
