@@ -47,3 +47,29 @@ def plot_model_insight(model_name, model, X_processed):
 
         except Exception as e:
             st.error(f"❌ SHAP plot failed:\n\n{e}")
+
+
+def plot_shap_summary(model, X_processed):
+    st.markdown("### 🧠 SHAP Explanation")
+
+    try:
+        explainer = shap.Explainer(model, X_processed)
+        shap_values = explainer(X_processed)
+
+        if len(X_processed) < 2:
+            st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
+
+            try:
+                fig = shap.plots.waterfall(shap_values[0], show=False)
+                st.pyplot(bbox_inches="tight")
+            except Exception as e:
+                st.error(f"❌ Waterfall plot failed:\n\n{e}")
+        else:
+            try:
+                fig = shap.plots.beeswarm(shap_values, show=False)
+                st.pyplot(bbox_inches="tight")
+            except Exception as e:
+                st.error(f"❌ SHAP summary plot failed:\n\n{e}")
+
+    except Exception as e:
+        st.error(f"❌ SHAP explanation failed:\n\n{e}")
