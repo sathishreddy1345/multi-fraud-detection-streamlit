@@ -16,7 +16,7 @@ def plot_bar(model_scores):
 
 # 🔎 SHAP summary/waterfall plots
 def plot_shap_summary(model, X):
-    st.subheader("🔍 SHAP Explanation")
+    st.subheader("🧠 SHAP Explanation")
 
     try:
         explainer = shap.Explainer(model, X)
@@ -26,12 +26,16 @@ def plot_shap_summary(model, X):
             st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
 
             try:
-                # 👇 Handle binary or multi-class safely
-                if isinstance(shap_values[0], shap._explanation.Explanation):
-                    shap.plots.waterfall(shap_values[0], show=False)
-                elif hasattr(shap_values, "shape") and len(shap_values.shape) == 3:
-                    # multi-class shape: (n_samples, n_classes, n_features)
+                # Multi-class model (shap_values.shape = (n, classes, features))
+                if hasattr(shap_values, 'shape') and len(shap_values.shape) == 3:
+                    st.info("Multi-class model detected — showing class 0.")
                     shap.plots.waterfall(shap_values[0, 0], show=False)
+
+                # Single class / binary
+                elif isinstance(shap_values[0], shap._explanation.Explanation):
+                    shap.plots.waterfall(shap_values[0], show=False)
+
+                # Fallback
                 else:
                     shap.plots.waterfall(shap_values[0], show=False)
 
@@ -45,7 +49,7 @@ def plot_shap_summary(model, X):
                 shap.plots.beeswarm(shap_values, show=False)
                 st.pyplot(plt.gcf())
             except Exception as e:
-                st.error(f"❌ SHAP summary plot failed:\n\n{str(e)}")
+                st.error(f"❌ SHAP beeswarm failed:\n\n{str(e)}")
 
     except Exception as e:
         st.error(f"❌ SHAP explainer error:\n\n{str(e)}")
