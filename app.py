@@ -98,11 +98,11 @@ if selected_tab == "🏠 Home":
     st.title("🛡️ Multi-Fraud Detection System")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💳 Credit Card Fraud"): st.session_state["page"] = "💳 Credit Card"; st.experimental_rerun()
-        if st.button("🏦 Loan Fraud"): st.session_state["page"] = "🏦 Loan"; st.experimental_rerun()
+        if st.button("💳 Credit Card Fraud"): st.session_state["page"] = "💳 Credit Card"; st.rerun()
+        if st.button("🏦 Loan Fraud"): st.session_state["page"] = "🏦 Loan"; st.rerun()
     with col2:
-        if st.button("📱 PaySim Fraud"): st.session_state["page"] = "📱 PaySim"; st.experimental_rerun()
-        if st.button("🚗 Insurance Fraud"): st.session_state["page"] = "🚗 Insurance"; st.experimental_rerun()
+        if st.button("📱 PaySim Fraud"): st.session_state["page"] = "📱 PaySim"; st.rerun()
+        if st.button("🚗 Insurance Fraud"): st.session_state["page"] = "🚗 Insurance"; st.rerun()
 
 if selected_tab in fraud_modules:
     st.title(f"{selected_tab} Fraud Detection")
