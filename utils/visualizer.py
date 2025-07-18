@@ -25,19 +25,26 @@ def plot_heatmap(df: pd.DataFrame):
 
 # 🧠 SHAP Summary Plot (Safe Version)
 
+
 def plot_shap_summary(model, X):
-    st.subheader("📊 SHAP Explanation (RandomForest)")
+    st.subheader("📊 SHAP Explanation")
 
     try:
-        # Create SHAP explainer
         explainer = shap.Explainer(model)
         shap_values = explainer(X)
 
-        # Handle 1-row or many-row inputs
         if X.shape[0] == 1:
             st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
-            fig, ax = plt.subplots(figsize=(10, 6))
-            shap.plots.waterfall(shap_values[0], show=False)
+
+            # Handle multi-class models
+            if isinstance(shap_values[0], shap._explanation.Explanation) and shap_values.values.shape[1] > 1:
+                st.info("Multi-class model detected — showing class 0 by default")
+                fig, ax = plt.subplots(figsize=(10, 6))
+                shap.plots.waterfall(shap_values[0, 0], show=False)
+            else:
+                fig, ax = plt.subplots(figsize=(10, 6))
+                shap.plots.waterfall(shap_values[0], show=False)
+
             st.pyplot(fig)
 
         else:
