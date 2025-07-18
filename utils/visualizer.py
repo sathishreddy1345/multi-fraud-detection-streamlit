@@ -35,32 +35,23 @@ def plot_shap_summary(model, X):
         if X.shape[0] == 1:
             st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
 
-            try:
-                if hasattr(shap_values, 'values') and shap_values.values.ndim == 3:
-                    st.info("Multi-class model detected — showing class 0 by default.")
-                    class_idx = 0  # or let user select with st.selectbox
-                    # Create a single Explanation object manually
-                    explanation = shap.Explanation(
-                        values=shap_values.values[0][class_idx],
-                        base_values=shap_values.base_values[0][class_idx],
-                        data=shap_values.data[0],
-                        feature_names=shap_values.feature_names
-                    )
-                    fig = shap.plots.waterfall(explanation, show=False)
-                else:
-                    # Binary classification or regression
-                    fig = shap.plots.waterfall(shap_values[0], show=False)
+           try:
+    if hasattr(shap_values, 'values') and shap_values.values.ndim == 3:
+        st.info("Multi-class model detected — showing class 0 by default.")
+        class_idx = 0
+        explanation = shap.Explanation(
+            values=shap_values.values[0][class_idx],
+            base_values=shap_values.base_values[0][class_idx],
+            data=shap_values.data[0],
+            feature_names=shap_values.feature_names
+        )
+        shap.plots.waterfall(explanation, show=False)
+    else:
+        shap.plots.waterfall(shap_values[0], show=False)
 
-                st.pyplot(fig)
+    fig = plt.gcf()   # ✅ FIX: get current figure
+    st.pyplot(fig)    # ✅ streamlit expects a matplotlib figure here
 
-            except Exception as we:
-                st.error("❌ Waterfall plot failed:")
-                st.code(str(we))
-
-        else:
-            fig = shap.plots.beeswarm(shap_values, show=False)
-            st.pyplot(fig)
-
-    except Exception as e:
-        st.error("❌ SHAP summary plot failed:")
-        st.code(str(e))
+except Exception as we:
+    st.error("❌ Waterfall plot failed:")
+    st.code(str(we))
