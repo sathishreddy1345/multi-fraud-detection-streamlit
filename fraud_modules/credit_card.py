@@ -1,33 +1,41 @@
-
 # fraud_modules/credit_card.py
-import pickle
-import numpy as np
+
 import pandas as pd
+import pickle
 from sklearn.preprocessing import StandardScaler
 
-# Load models once
-model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
+# 📦 Load pre-trained models
 models = {}
+model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
 for name in model_names:
-    with open(f"models/creditcard_{name}.pkl", "rb") as f:
-        models[name] = pickle.load(f)
+    try:
+        with open(f"models/creditcard_{name}.pkl", "rb") as f:
+            models[name] = pickle.load(f)
+    except Exception as e:
+        print(f"⚠️ Could not load model {name}: {e}")
 
-scaler = StandardScaler()
-
-def predict_creditcard_fraud(df):
-    global models
+# 🧠 Predict Credit Card Fraud
+def predict_creditcard_fraud(df: pd.DataFrame):
+    # 💡 Preprocessing
+    if 'Class' in df.columns:
+        df = df.drop(columns=['Class'])  # drop label if present
     X = df.copy()
-    X = X.select_dtypes(include="number").fillna(0)
+    
+    # Normalize features
+    scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    predictions = {}
-    for key, model in models.items():
-        if key == "iso":
-            preds = model.predict(X_scaled)
-            scores = np.where(preds == -1, 1, 0)
+    scores = {}
+    for name, model in models.items():
+        if name == "iso":
+            pred = -model.decision_function(X_scaled)
+            score = pred.mean()
         else:
-            scores = model.predict_proba(X_scaled)[:, 1]
-        predictions[key] = np.mean(scores)
+            pred = model.predict_proba(X_scaled)[:, 1]
+            score = pred.mean()
+        scores[name] = round(score, 4)
 
-    avg_score = np.mean(list(predictions.values()))
-    return avg_score, predictions, pd.DataFrame(X_scaled, columns=X.columns)
+    # 🔢 Weighted score (you can customize this logic)
+    combined_score = sum(scores.values()) / len(scores)
+
+    return combined_score, scores, X  # X is processed input for SHAP
