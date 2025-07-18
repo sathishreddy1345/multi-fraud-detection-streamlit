@@ -1,28 +1,33 @@
 
+# fraud_modules/credit_card.py
 import pickle
+import numpy as np
 import pandas as pd
-from fraud_modules.aggregator import combine_model_scores
+from sklearn.preprocessing import StandardScaler
 
-model_files = {
-    'rf': 'models/randomforest_model.pkl',
-    'xgb': 'models/catboost_model.pkl',
-    'lgbm': 'models/lightgbm_model.pkl',
-    'cat': 'models/catboost_model.pkl',
-    'lr': 'models/logisticregression_model.pkl',
-    'iso': 'models/isolationforest_model.pkl'
-}
-
+# Load models once
+model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
 models = {}
-for key, path in model_files.items():
-    with open(path, 'rb') as f:
-        models[key] = pickle.load(f)
+for name in model_names:
+    with open(f"models/creditcard_{name}.pkl", "rb") as f:
+        models[name] = pickle.load(f)
 
-def predict_creditcard_fraud(input_df):
-    scores = {}
-    for name, model in models.items():
-        if name == 'iso':
-            scores[name] = -model.decision_function(input_df)[0]
+scaler = StandardScaler()
+
+def predict_creditcard_fraud(df):
+    global models
+    X = df.copy()
+    X = X.select_dtypes(include="number").fillna(0)
+    X_scaled = scaler.fit_transform(X)
+
+    predictions = {}
+    for key, model in models.items():
+        if key == "iso":
+            preds = model.predict(X_scaled)
+            scores = np.where(preds == -1, 1, 0)
         else:
-            scores[name] = model.predict_proba(input_df)[0][1]
-    combined = combine_model_scores(scores)
-    return combined, scores
+            scores = model.predict_proba(X_scaled)[:, 1]
+        predictions[key] = np.mean(scores)
+
+    avg_score = np.mean(list(predictions.values()))
+    return avg_score, predictions, pd.DataFrame(X_scaled, columns=X.columns)
