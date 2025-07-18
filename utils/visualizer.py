@@ -25,33 +25,22 @@ def plot_heatmap(df: pd.DataFrame):
 
 # 🧠 SHAP Summary Plot (Safe Version)
 
+
 def plot_shap_summary(model, X):
-    st.subheader("📊 SHAP Explanation")
+    explainer = shap.Explainer(model, X)
+    shap_values = explainer(X)
 
-    try:
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X)
-
-        if X.shape[0] == 1:
-            st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
-
-           try:
-    if hasattr(shap_values, 'values') and shap_values.values.ndim == 3:
-        st.info("Multi-class model detected — showing class 0 by default.")
-        class_idx = 0
-        explanation = shap.Explanation(
-            values=shap_values.values[0][class_idx],
-            base_values=shap_values.base_values[0][class_idx],
-            data=shap_values.data[0],
-            feature_names=shap_values.feature_names
-        )
-        shap.plots.waterfall(explanation, show=False)
+    if len(X) < 2:
+        st.warning("⚠️ SHAP beeswarm needs ≥2 rows — using waterfall plot for row 0.")
+        try:
+            shap.plots.waterfall(shap_values[0], show=False)
+            fig = plt.gcf()
+            st.pyplot(fig)
+        except Exception as e:
+            st.error(f"❌ SHAP plot failed:\n\n{str(e)}")
     else:
-        shap.plots.waterfall(shap_values[0], show=False)
-
-    fig = plt.gcf()   # ✅ FIX: get current figure
-    st.pyplot(fig)    # ✅ streamlit expects a matplotlib figure here
-
-except Exception as we:
-    st.error("❌ Waterfall plot failed:")
-    st.code(str(we))
+        try:
+            fig = shap.plots.beeswarm(shap_values, show=False)
+            st.pyplot(fig)
+        except Exception as e:
+            st.error(f"❌ SHAP summary plot failed:\n\n{str(e)}")
