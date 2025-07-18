@@ -134,6 +134,16 @@ if selected_tab in fraud_modules:
 
             st.success(f"🧠 Final Score: {score*100:.2f}% Fraud Likely")
             plot_bar(model_scores)
+            # Individual model insights
+            st.markdown("---")
+            st.subheader("🧠 View Insights for a Specific Model")
+            
+            selected_model = st.selectbox("🔽 Choose a model:", list(fraud_modules[selected_tab].models.keys()))
+            
+            if st.button("Show Insights"):
+                model = fraud_modules[selected_tab].models[selected_model]
+                plot_model_insight(selected_model, model, processed)
+
             plot_shap_summary(fraud_modules[selected_tab].models['rf'], processed)
 
             if st.button("⬇️ Download Results"):
