@@ -1,19 +1,20 @@
-# credit_card.py
+# fraud_modules/credit_card.py
+
 import pickle
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-# ✅ Load Models
 model_names = ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']
 models = {}
 
+# ✅ Load models from /models folder
 for name in model_names:
     try:
         with open(f"models/credit_card_{name}.pkl", "rb") as f:
             models[name] = pickle.load(f)
-    except:
-        print(f"⚠️ Could not load: {name}")
+    except FileNotFoundError:
+        print(f"⚠️ Model not found: credit_card_{name}.pkl")
 
 def predict_creditcard_fraud(df):
     df = df.copy()
@@ -25,20 +26,23 @@ def predict_creditcard_fraud(df):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df)
 
-    model_scores = {}
+    scores = {}
+
     for name, model in models.items():
         try:
             if name == 'iso':
-                score = -model.decision_function(X_scaled).mean()
-                model_scores[name] = score
+                score = (-model.decision_function(X_scaled)).mean()
             else:
-                prob = model.predict_proba(X_scaled)[:, 1].mean()
-                model_scores[name] = prob
+                score = model.predict_proba(X_scaled)[:, 1].mean()
+            scores[name] = score
         except Exception as e:
-            print(f"❌ {name} prediction failed: {e}")
+            print(f"❌ Error with model {name}: {e}")
 
-    final_score = np.mean(list(model_scores.values()))
-    return final_score, model_scores, df
+    if not scores:
+        raise ValueError("No valid models for prediction.")
 
-# expose models for SHAP
+    final_score = np.mean(list(scores.values()))
+    return final_score, scores, df
+
+# Allow app.py to access models
 globals()['models'] = models
