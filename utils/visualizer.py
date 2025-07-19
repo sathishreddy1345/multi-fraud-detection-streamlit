@@ -58,16 +58,24 @@ def plot_shap_summary(model, X_processed):
 # 🧬 SHAP Force Plot (for one row)
 # ------------------------------
 def plot_shap_force(model, X_processed):
-    st.subheader("🧬 SHAP Force Plot (Row 0)")
+    st.subheader("🧠 SHAP Force Plot")
     try:
-        explainer = shap.Explainer(model, X_processed)
+        explainer = shap.Explainer(model)
         shap_values = explainer(X_processed)
-        force_html = shap.plots.force(shap_values[0], matplotlib=False)
-        b64 = base64.b64encode(force_html.data.encode()).decode()
-        html = f'<iframe src="data:text/html;base64,{b64}" width="100%" height="400"></iframe>'
-        st.components.v1.html(html, height=400)
+
+        # Only one sample at a time for force plot
+        st.write("Visualizing force plot for the first row in your dataset:")
+        force_plot_html = shap.plots.force(
+            explainer.expected_value,
+            shap_values[0].values,
+            X_processed.iloc[0],
+            matplotlib=False,
+            show=False
+        )
+        st.components.v1.html(shap.getjs(), height=0)
+        st.components.v1.html(force_plot_html.html(), height=300)
     except Exception as e:
-        st.error(f"❌ SHAP force plot failed: {e}")
+        st.error(f"❌ SHAP Force Plot failed: {e}")
 
 # ------------------------------
 # 🥧 Enhanced Pie Chart (Tiny Safe)
