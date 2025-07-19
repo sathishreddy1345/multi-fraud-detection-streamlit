@@ -14,12 +14,12 @@ from sklearn.linear_model import LogisticRegression
 model_names = ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']
 models = {}
 
-# ✅ Load models properly (use native loader for xgb if needed)
+# ✅ Load pre-trained models
 for name in model_names:
     try:
         if name == 'xgb':
             model = XGBClassifier()
-            model.load_model("models/credit_card_xgb.json")  # ✅ MUST use .json saved with .save_model()
+            model.load_model("models/credit_card_xgb.json")  # Only JSON works for XGBoost 2.x
             models[name] = model
         else:
             with open(f"models/credit_card_{name}.pkl", "rb") as f:
@@ -32,24 +32,26 @@ for name in model_names:
 def predict_creditcard_fraud(df):
     df = df.copy()
 
-    # ✅ Drop label/target column if exists
+    # ✅ Remove label if present
     if 'Class' in df.columns:
         df.drop(columns=['Class'], inplace=True)
 
-    # ✅ Keep only numeric columns
+    # ✅ Ensure only numerical input
     df = df.select_dtypes(include=[np.number])
 
-    # ✅ Check and fix feature mismatch (e.g., drop extra ID/column if needed)
+    # ✅ Trim extra columns (e.g., "Time" or "ID" column may be present)
     expected_features = 29
     if df.shape[1] > expected_features:
         df = df.iloc[:, :expected_features]
+    elif df.shape[1] < expected_features:
+        raise ValueError(f"Input has {df.shape[1]} features, expected {expected_features}.")
 
+    # ✅ Standardize
     df.fillna(0, inplace=True)
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df)
 
     scores = {}
-
     for name, model in models.items():
         try:
             if name == 'iso':
@@ -61,10 +63,10 @@ def predict_creditcard_fraud(df):
             print(f"❌ Error with model {name}: {e}")
 
     if not scores:
-        raise ValueError("No valid models for prediction.")
+        raise ValueError("No valid models were able to make predictions.")
 
     final_score = np.mean(list(scores.values()))
     return final_score, scores, df
 
-# ✅ Make models available to app.py
+# ✅ Make models available globally
 globals()['models'] = models
