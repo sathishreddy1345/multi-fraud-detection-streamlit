@@ -1,5 +1,3 @@
-# fraud_modules/credit_card.py
-
 import pickle
 import pandas as pd
 import numpy as np
@@ -22,13 +20,12 @@ for name in model_names:
             model.load_model("models/credit_card_xgb.json")  # Only JSON works for XGBoost 2.x
             models[name] = model
         else:
-          with open(f"models/loan_{name}.pkl", "rb") as f:
-            obj = pickle.load(f)
-            if isinstance(obj, tuple):
-                models[name] = obj[0]  # Extract model from (model, features)
-            else:
-                models[name] = obj
-
+            with open(f"models/credit_card_{name}.pkl", "rb") as f:  # ✅ Fixed from loan_ to credit_card_
+                obj = pickle.load(f)
+                if isinstance(obj, tuple):
+                    models[name] = obj[0]  # Extract model from (model, features)
+                else:
+                    models[name] = obj
 
     except FileNotFoundError:
         print(f"⚠️ Model not found: credit_card_{name}")
@@ -45,7 +42,7 @@ def predict_creditcard_fraud(df):
     # ✅ Ensure only numerical input
     df = df.select_dtypes(include=[np.number])
 
-    # ✅ Trim extra columns (e.g., "Time" or "ID" column may be present)
+    # ✅ Trim or validate features
     expected_features = 29
     if df.shape[1] > expected_features:
         df = df.iloc[:, :expected_features]
