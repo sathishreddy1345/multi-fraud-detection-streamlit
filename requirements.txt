@@ -1,23 +1,24 @@
+# Compatible Python packages for ML
+
 # Core
-streamlit>=1.25.0
-pandas
-numpy
+streamlit==1.27.2
+pandas==1.5.3
+numpy==1.23.5
 scikit-learn==1.2.2
 
 # ML Models
 xgboost==1.7.6
 lightgbm==3.3.5
 catboost==1.0.6
-# Optional: if RF and Isolation Forest are custom, no need to install
 
-# SHAP for interpretability
+# SHAP and dependencies
 shap==0.41.0
 numba==0.53.1
 llvmlite==0.36.0
 
 # Visualization
-matplotlib
-seaborn
+matplotlib==3.7.1
+seaborn==0.12.2
 
-# Streamlit UI Extensions
+# Streamlit Extensions
 streamlit-extras
