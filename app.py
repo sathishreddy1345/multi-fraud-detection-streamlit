@@ -1,44 +1,72 @@
-# app.py
+# app.py — AI-Powered Fraud Detection System with Advanced Visualization
+
 import streamlit as st
 import pandas as pd
 import time
+import matplotlib.pyplot as plt
+import seaborn as sns
 from fraud_modules import credit_card, paysim, loan, insurance
 from utils.visualizer import (
     plot_bar,
     plot_shap_summary,
     plot_pie_chart,
     plot_confusion_report,
-    get_model_description,
+    get_model_description
+)
+from sklearn.metrics import confusion_matrix
+
+st.set_page_config(
+    page_title="🛡️ Multi-Fraud Detection System",
+    layout="wide",
+    page_icon="🧠"
 )
 
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# -------------------- UI Setup --------------------
-st.set_page_config(page_title="🛡️ Multi-Fraud Detector", layout="wide", page_icon="💳")
-
+# 🎨 Custom Styling & Animations
 st.markdown("""
-    <style>
-    .block-container {
-        padding: 2rem;
-        border-radius: 12px;
-        backdrop-filter: blur(6px);
-        background: rgba(0, 0, 0, 0.3);
-    }
-    </style>
+<style>
+body {
+    background: linear-gradient(-45deg, #1f1c2c, #928DAB, #0f2027);
+    background-size: 400% 400%;
+    animation: gradient 20s ease infinite;
+    color: #f5f5f5;
+}
+@keyframes gradient {
+    0% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+    100% {background-position: 0% 50%;}
+}
+.block-container {
+    backdrop-filter: blur(8px);
+    background-color: rgba(0, 0, 0, 0.25);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+</style>
 """, unsafe_allow_html=True)
 
-# -------------------- Sidebar Theme --------------------
-mode = st.sidebar.radio("🎨 Theme", ["Dark", "Light"])
-bg_color = "#1b2735" if mode == "Dark" else "#f5f5f5"
-font_color = "#ffffff" if mode == "Dark" else "#111111"
+# Sidebar
+st.sidebar.title("🧭 Navigation Panel")
+tabs = ["🏠 Home", "💳 Credit Card", "📱 PaySim", "🏦 Loan", "🚗 Insurance"]
+selected_tab = st.sidebar.radio("Select Fraud Type", tabs)
+
+if "Model Info" not in st.session_state:
+    st.session_state["Model Info"] = {
+        "💳 Credit Card": "RandomForest, XGBoost, CatBoost, LightGBM, Logistic Regression, IsolationForest",
+        "📱 PaySim": "Logistic Regression + IsolationForest",
+        "🏦 Loan": "LightGBM + Logistic Regression",
+        "🚗 Insurance": "CatBoost + Random Forest"
+    }
+
+with st.sidebar.expander("📘 Model Details", expanded=False):
+    for model, desc in st.session_state["Model Info"].items():
+        st.markdown(f"**{model}**: {desc}")
 
 if st.sidebar.button("🔁 Reset App"):
     st.session_state.clear()
-    st.rerun()
+    st.experimental_rerun()
 
-# -------------------- Page Mapping --------------------
+# Fraud prediction modules
 fraud_modules = {
     "💳 Credit Card": credit_card,
     "📱 PaySim": paysim,
@@ -52,67 +80,64 @@ function_map = {
     "🚗 Insurance": "predict_insurance_fraud"
 }
 
-# -------------------- Sidebar Info --------------------
-st.sidebar.markdown("### 🤖 Model Info")
-model_info = {
-    "💳 Credit Card": "All 6 models | High accuracy | Balanced performance",
-    "📱 PaySim": "IsolationForest + Logistic Regression",
-    "🏦 Loan": "LightGBM + Logistic Regression",
-    "🚗 Insurance": "CatBoost + RandomForest"
-}
-for key, val in model_info.items():
-    with st.sidebar.expander(key):
-        st.write(val)
-
-# -------------------- Navigation --------------------
-tabs = ["🏠 Home"] + list(fraud_modules.keys())
-selected_tab = st.sidebar.radio("📁 Choose Fraud Type", tabs)
-
-# -------------------- Home --------------------
+# 🏠 Home
 if selected_tab == "🏠 Home":
-    st.title("🛡️ Multi-Fraud Detection System")
-    st.info("Upload CSV → Detect Fraud → Visualize & Explain via SHAP & Charts")
+    st.title("🛡️ Multi-Fraud Detection Dashboard")
+    st.markdown("Welcome! Choose a fraud type from the sidebar or buttons below.")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💳 Credit Card Fraud"):
+            st.session_state["page"] = "💳 Credit Card"
+            st.experimental_rerun()
+        if st.button("🏦 Loan Fraud"):
+            st.session_state["page"] = "🏦 Loan"
+            st.experimental_rerun()
+    with col2:
+        if st.button("📱 PaySim Fraud"):
+            st.session_state["page"] = "📱 PaySim"
+            st.experimental_rerun()
+        if st.button("🚗 Insurance Fraud"):
+            st.session_state["page"] = "🚗 Insurance"
+            st.experimental_rerun()
 
-# -------------------- Main Prediction Pages --------------------
-elif selected_tab in fraud_modules:
-    st.title(f"{selected_tab} Fraud Detection")
-
-    uploaded = st.file_uploader("📥 Upload CSV file for prediction", type="csv")
+# 🚨 Main Fraud Pages
+if selected_tab in fraud_modules:
+    st.title(f"{selected_tab} Detection")
+    uploaded = st.file_uploader("📤 Upload a CSV file for analysis", type="csv")
 
     if uploaded:
         df = pd.read_csv(uploaded)
-        st.dataframe(df.head())
+        st.dataframe(df.head(5), height=250)
 
-        if st.button("🔍 Run Prediction"):
-            st.success("🧠 Prediction Started...")
-            with st.spinner("Analyzing with all models..."):
-                predict_fn = getattr(fraud_modules[selected_tab], function_map[selected_tab])
-                score, model_scores, X_processed = predict_fn(df)
+        if st.button("🔍 Run AI Fraud Detection"):
+            with st.spinner("Analyzing... please wait ⏳"):
+                time.sleep(1)
+                fn = function_map[selected_tab]
+                score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
 
-                # Display final result
-                st.success(f"🧠 Final Fraud Score: {score*100:.2f}%")
-                plot_pie_chart(score)
-                plot_bar(model_scores)
+            # 📊 Bar chart of all model scores
+            plot_bar(model_scores)
 
-                st.subheader("🔎 Inspect a Model")
-                selected_model = st.selectbox("📌 Select a model", list(model_scores.keys()), key="select_model")
-                st.metric("Selected Model Score", f"{model_scores[selected_model]*100:.2f}%")
+            # 🧠 SHAP Explanation (default to RF if present)
+            default_model = fraud_modules[selected_tab].models.get("rf") or list(fraud_modules[selected_tab].models.values())[0]
+            plot_shap_summary(default_model, processed)
 
-                model = fraud_modules[selected_tab].models.get(selected_model)
-                if model:
-                    plot_shap_summary(model, X_processed)
+            # 🥧 Pie Chart
+            plot_pie_chart(score)
 
-                # Optional: show scoreboard
-                st.markdown("### 📊 Model Comparison Chart")
-                st.bar_chart(pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score']))
+            st.success(f"✅ Overall Fraud Likelihood: **{score*100:.2f}%**")
 
-                # Confusion Matrix if ground truth present
-                if 'actual' in df.columns:
-                    y_true = df['actual']
-                    y_pred = [1 if model_scores['rf'] > 0.5 else 0] * len(df)
-                    plot_confusion_report(y_true, y_pred)
+            # 🔎 Inspect individual model
+            st.markdown("### 🔬 Explore Individual Model")
+            selected_model = st.selectbox("Choose a model", list(model_scores.keys()))
+            st.metric("Score", f"{model_scores[selected_model]*100:.2f}%")
+            st.markdown(get_model_description(selected_model))
 
-                # Download button
-                result_df = df.copy()
-                result_df['Fraud_Score'] = score
-                st.download_button("⬇️ Download Results", result_df.to_csv(index=False), "fraud_output.csv", "text/csv")
+            # 📥 Export
+            st.download_button("⬇️ Download Prediction CSV", df.to_csv(index=False), file_name="results.csv")
+
+            # Optional Confusion Matrix
+            if 'actual' in df.columns:
+                y_true = df['actual']
+                y_pred = [1 if model_scores[selected_model] > 0.5 else 0]*len(df)
+                plot_confusion_report(y_true, y_pred)
