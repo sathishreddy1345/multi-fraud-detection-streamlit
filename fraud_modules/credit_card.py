@@ -1,13 +1,17 @@
 # fraud_modules/credit_card.py
+# fraud_modules/credit_card.py
+
+import pickle  # ✅ REQUIRED to load .pkl files
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+
 models = {}
 for model_name in ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']:
     with open(f"models/credit_card_{model_name}.pkl", "rb") as f:
         models[model_name] = pickle.load(f)
 
-import pandas as pd
-import numpy as np
-import pickle
-from sklearn.preprocessing import StandardScaler
+
 
 # Load trained models
 models = {}
