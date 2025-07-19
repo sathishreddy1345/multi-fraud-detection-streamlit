@@ -1,25 +1,25 @@
+# 🔧 Python Compatibility
 python==3.9
+
+# 📊 Data Processing
+pandas>=1.1.5
+numpy>=1.20
+scikit-learn>=1.1.1
+
+# 🧠 ML Models
+xgboost==1.7.6
+lightgbm==3.3.5
+catboost==1.2
+
+# 📈 Visualizations
+matplotlib>=3.3.0
+seaborn>=0.11.0
+
+# 🧠 SHAP Explainability
 shap==0.41.0
 numba==0.53.1
 llvmlite==0.36.0
 
-
-# Core
-streamlit>=1.25.0
-pandas
-numpy
-scikit-learn
-
-# ML Models
-xgboost
-lightgbm
-catboost
-
-# Visualization
-matplotlib
-seaborn
-
-
-
-# Streamlit Extensions (optional for UI)
-streamlit-extras
+# 🌐 Web UI
+streamlit==1.25.0
+streamlit-extras==0.2.7
