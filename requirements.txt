@@ -1,15 +1,16 @@
-# Pin versions known to work together
+# Core
 streamlit>=1.25.0
 pandas
 numpy
-scikit-learn>=1.1.1
+scikit-learn==1.2.2
 
-# ML models
+# ML Models
 xgboost==1.7.6
 lightgbm==3.3.5
 catboost==1.0.6
+# Optional: if RF and Isolation Forest are custom, no need to install
 
-# For SHAP explanations
+# SHAP for interpretability
 shap==0.41.0
 numba==0.53.1
 llvmlite==0.36.0
@@ -18,5 +19,5 @@ llvmlite==0.36.0
 matplotlib
 seaborn
 
-# Streamlit UI extensions
+# Streamlit UI Extensions
 streamlit-extras
