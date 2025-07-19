@@ -24,10 +24,10 @@ for name in model_names:
         else:
            with open(f"models/loan_{name}.pkl", "rb") as f:
            obj = pickle.load(f)
-    if isinstance(obj, tuple):
-        models[name] = obj[0]  # Extract model from (model, features)
-    else:
-        models[name] = obj
+           if isinstance(obj, tuple):
+              models[name] = obj[0]  # Extract model from (model, features)
+           else:
+              models[name] = obj
 
     except FileNotFoundError:
         print(f"⚠️ Model not found: credit_card_{name}")
