@@ -1,6 +1,5 @@
-name: fraud-env
+name: fraud-app
 channels:
-  - defaults
   - conda-forge
 dependencies:
   - python=3.10
