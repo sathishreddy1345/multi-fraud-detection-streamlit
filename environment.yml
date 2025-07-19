@@ -4,7 +4,6 @@ channels:
   - defaults
 dependencies:
   - python=3.10
-  - pip
   - numpy=1.24.4
   - scikit-learn=1.2.2
   - pandas
@@ -14,3 +13,4 @@ dependencies:
   - lightgbm=3.3.5
   - catboost=1.2
   - streamlit
+  - pip
