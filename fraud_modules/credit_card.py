@@ -1,60 +1,54 @@
 # fraud_modules/credit_card.py
-# fraud_modules/credit_card.py
 
-import pickle  # ✅ REQUIRED to load .pkl files
+import pickle
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-models = {}
-for model_name in ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']:
-    with open(f"models/credit_card_{model_name}.pkl", "rb") as f:
-        models[model_name] = pickle.load(f)
-
-
-
-# Load trained models
-models = {}
+# ✅ Load all 6 models if available
 model_names = ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']
+models = {}
 
-for model_name in model_names:
+for name in model_names:
     try:
-        with open(f"models/credit_card_{model_name}.pkl", "rb") as f:
-            models[model_name] = pickle.load(f)
+        with open(f"models/credit_card_{name}.pkl", "rb") as f:
+            models[name] = pickle.load(f)
     except FileNotFoundError:
-        print(f"⚠️ Model {model_name} not found, skipping...")
+        print(f"⚠️ Model '{name}' not found in models/ folder — skipping.")
 
 def predict_creditcard_fraud(df):
     df = df.copy()
 
-    # Drop target column if present
+    # ✅ Drop target if present
     if 'Class' in df.columns:
         df = df.drop(columns=['Class'])
 
-    # Keep only numeric features
+    # ✅ Use only numeric input features
     df = df.select_dtypes(include=[np.number])
     df = df.fillna(0)
 
-    # Scale features
+    # ✅ Standard scaling
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df)
 
     model_scores = {}
 
+    # ✅ Loop over all models
     for name, model in models.items():
         try:
             if name == 'iso':
-                # Anomaly score: higher = more anomalous
-                score = (-model.decision_function(X_scaled)).mean()
-                model_scores[name] = score  # You can normalize later
+                score = (-model.decision_function(X_scaled)).mean()  # Higher score = more anomalous
+                model_scores[name] = score
             else:
                 prob = model.predict_proba(X_scaled)[:, 1].mean()
                 model_scores[name] = prob
         except Exception as e:
-            print(f"⚠️ Model {name} prediction failed: {e}")
+            print(f"⚠️ Model '{name}' prediction failed: {e}")
 
     if not model_scores:
-        raise ValueError("❌ No predictions could be made — check model compatibility and input features.")
+        raise ValueError("❌ No predictions could be made — check model files and input features.")
 
+    # ✅ Average fraud score across all models
     final_score = np.mean(list(model_scores.values()))
+
     return final_score, model_scores, df
