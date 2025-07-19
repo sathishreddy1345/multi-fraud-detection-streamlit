@@ -9,8 +9,10 @@ from fraud_modules import credit_card, paysim, loan, insurance
 
 from utils.visualizer import (
     plot_bar, plot_shap_summary, plot_pie_chart, plot_confusion_report,get_model_description,
-    plot_boxplot, plot_radar, download_model_report
+    plot_boxplot,plot_shap_force, plot_radar, download_model_report, plot_correlation_heatmap
 )
+
+
 from sklearn.metrics import confusion_matrix
 
 st.set_page_config(
@@ -143,6 +145,8 @@ if selected_tab in fraud_modules:
 
             plot_radar(model_scores)
             plot_boxplot(processed)
+            plot_shap_force(selected_model_object, processed)
+            plot_correlation_heatmap(processed)
             
             download_model_report(processed)
 
