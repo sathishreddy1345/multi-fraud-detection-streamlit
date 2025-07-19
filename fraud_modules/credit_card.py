@@ -5,24 +5,46 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
+from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+from catboost import CatBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, IsolationForest
+from sklearn.linear_model import LogisticRegression
+
 model_names = ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']
 models = {}
 
-# ✅ Load models from /models folder
+# ✅ Load models properly (use native loader for xgb if needed)
 for name in model_names:
     try:
-        with open(f"models/credit_card_{name}.pkl", "rb") as f:
-            models[name] = pickle.load(f)
+        if name == 'xgb':
+            model = XGBClassifier()
+            model.load_model("models/credit_card_xgb.json")  # ✅ MUST use .json saved with .save_model()
+            models[name] = model
+        else:
+            with open(f"models/credit_card_{name}.pkl", "rb") as f:
+                models[name] = pickle.load(f)
     except FileNotFoundError:
-        print(f"⚠️ Model not found: credit_card_{name}.pkl")
+        print(f"⚠️ Model not found: credit_card_{name}")
+    except Exception as e:
+        print(f"❌ Error loading model {name}: {e}")
 
 def predict_creditcard_fraud(df):
     df = df.copy()
 
+    # ✅ Drop label/target column if exists
     if 'Class' in df.columns:
         df.drop(columns=['Class'], inplace=True)
 
-    df = df.select_dtypes(include=[np.number]).fillna(0)
+    # ✅ Keep only numeric columns
+    df = df.select_dtypes(include=[np.number])
+
+    # ✅ Check and fix feature mismatch (e.g., drop extra ID/column if needed)
+    expected_features = 29
+    if df.shape[1] > expected_features:
+        df = df.iloc[:, :expected_features]
+
+    df.fillna(0, inplace=True)
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df)
 
@@ -44,5 +66,5 @@ def predict_creditcard_fraud(df):
     final_score = np.mean(list(scores.values()))
     return final_score, scores, df
 
-# Allow app.py to access models
+# ✅ Make models available to app.py
 globals()['models'] = models
