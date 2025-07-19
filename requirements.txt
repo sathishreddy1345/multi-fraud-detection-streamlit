@@ -1,5 +1,4 @@
-# 🔧 Python Compatibility
-python==3.9
+
 
 # 📊 Data Processing
 pandas>=1.1.5
