@@ -6,12 +6,10 @@ import time
 import matplotlib.pyplot as plt
 import seaborn as sns
 from fraud_modules import credit_card, paysim, loan, insurance
+
 from utils.visualizer import (
-    plot_bar,
-    plot_shap_summary,
-    plot_pie_chart,
-    plot_confusion_report,
-    get_model_description
+    plot_bar, plot_shap_summary, plot_pie_chart, plot_confusion_report,get_model_description,
+    plot_boxplot, plot_radar, download_model_report
 )
 from sklearn.metrics import confusion_matrix
 
@@ -141,3 +139,10 @@ if selected_tab in fraud_modules:
                 y_true = df['actual']
                 y_pred = [1 if model_scores[selected_model] > 0.5 else 0]*len(df)
                 plot_confusion_report(y_true, y_pred)
+
+
+            plot_radar(model_scores)
+            plot_boxplot(processed)
+            
+            download_model_report(processed)
+
