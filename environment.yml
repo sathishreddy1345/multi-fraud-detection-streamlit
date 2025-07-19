@@ -2,16 +2,15 @@ name: fraud-detection-env
 channels:
   - conda-forge
   - defaults
-
-# environment.yml
 dependencies:
   - python=3.10
-  - scikit-learn=1.3.2  # or latest supported on conda-forge
+  - pip
+  - scikit-learn=1.3.2   # or the latest stable version
+  - streamlit
   - pandas
   - numpy
-  - streamlit
   - matplotlib
   - seaborn
   - xgboost
   - lightgbm
-  - catboost=1.2  # as 1.0.6 won't work on py3.10+
+  - catboost=1.2
