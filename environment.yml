@@ -1,7 +1,7 @@
-name: fraud-detection-env
+name: fraud-env
 channels:
-  - conda-forge
   - defaults
+  - conda-forge
 dependencies:
   - python=3.10
   - numpy=1.24.4
@@ -12,5 +12,6 @@ dependencies:
   - xgboost=1.7.6
   - lightgbm=3.3.5
   - catboost=1.2
-  - streamlit
   - pip
+  - pip:
+      - streamlit
