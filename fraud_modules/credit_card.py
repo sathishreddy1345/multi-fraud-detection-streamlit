@@ -22,12 +22,13 @@ for name in model_names:
             model.load_model("models/credit_card_xgb.json")  # Only JSON works for XGBoost 2.x
             models[name] = model
         else:
-           with open(f"models/loan_{name}.pkl", "rb") as f:
-           obj = pickle.load(f)
-           if isinstance(obj, tuple):
-              models[name] = obj[0]  # Extract model from (model, features)
-           else:
-              models[name] = obj
+          with open(f"models/loan_{name}.pkl", "rb") as f:
+            obj = pickle.load(f)
+            if isinstance(obj, tuple):
+                models[name] = obj[0]  # Extract model from (model, features)
+            else:
+                models[name] = obj
+
 
     except FileNotFoundError:
         print(f"⚠️ Model not found: credit_card_{name}")
