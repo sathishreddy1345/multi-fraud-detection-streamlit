@@ -1,5 +1,4 @@
-# Compatible with Streamlit Cloud (Python ≥3.11)
---upgrade pip
+# ❌ Do NOT write `python==3.9` here. It causes errors in Streamlit Cloud.
 
 # Core
 streamlit>=1.25.0
@@ -11,9 +10,8 @@ scikit-learn>=1.1.1
 xgboost==1.7.6
 lightgbm==3.3.5
 catboost==1.0.6
-# RandomForest, IsolationForest are inside scikit-learn
 
-# SHAP and explainability
+# SHAP & explanation support
 shap==0.41.0
 numba==0.57.0
 llvmlite==0.40.0
@@ -22,5 +20,5 @@ llvmlite==0.40.0
 matplotlib
 seaborn
 
-# Streamlit UI Enhancements
+# Streamlit enhancements
 streamlit-extras
