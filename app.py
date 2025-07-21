@@ -118,7 +118,8 @@ if selected_tab in fraud_modules:
             if not model_scores:
                 st.error("❌ No models were able to make predictions.")
             else:
-                selected_model = plot_bar(model_scores)
+                selected_model = plot_bar(model_scores) or list(model_scores.keys())[0]
+
                 if selected_model is None:
                     selected_model = next(iter(model_scores))  # fallback to first model
 
