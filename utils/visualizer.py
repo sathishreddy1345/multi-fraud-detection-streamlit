@@ -15,16 +15,13 @@ def plot_bar(model_scores, key=None):
     st.subheader("📊 All Model Prediction Scores")
     df = pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score']).sort_values(by='Score', ascending=False)
     st.bar_chart(df)
-
-    import uuid
-    unique_key = f"model_inspector_{uuid.uuid4()}"
+    
     selected_model = st.selectbox("🔍 Select a Model to Inspect", df.index.tolist(), key=key)
-
     if selected_model:
-        st.markdown(f"### 🔎 {selected_model.upper()} Model Insights")
         st.metric("Fraud Confidence Score", f"{model_scores[selected_model]*100:.2f}%")
-        st.bar_chart(pd.DataFrame([model_scores[selected_model]], index=[selected_model], columns=["Score"]))
         st.markdown(get_model_description(selected_model))
+    return selected_model
+
 
 # ------------------------------
 # 🧠 SHAP Summary Plot
