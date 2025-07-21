@@ -19,13 +19,17 @@ models = {}
 
 for name in model_names:
     try:
-        with open(f"models/credit_card_{name}.pkl", "rb") as f:
-            obj = pickle.load(f)
-            # Some models are saved as (model, features)
-            model = obj[0] if isinstance(obj, tuple) else obj
+        if name == 'xgb':
+            model = XGBClassifier()
+            model.load_model("models/credit_card_xgb.json")  # ✅ Correct for .json format
             models[name] = model
+        else:
+            with open(f"models/credit_card_{name}.pkl", "rb") as f:
+                obj = pickle.load(f)
+                model = obj[0] if isinstance(obj, tuple) else obj
+                models[name] = model
     except FileNotFoundError:
-        print(f"⚠️ Model not found: credit_card_{name}.pkl")
+        print(f"⚠️ Model not found: credit_card_{name}")
     except Exception as e:
         print(f"❌ Error loading model {name}: {e}")
 
