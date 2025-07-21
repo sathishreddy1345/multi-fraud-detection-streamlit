@@ -15,17 +15,21 @@ model_names = ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']
 models = {}
 
 # ✅ Load models from the models/ directory
-for name in model_names:
+scores = {}
+for name, model in models.items():
     try:
-        path = f"models/credit_card_{name}.pkl"
-        with open(path, "rb") as f:
-            obj = pickle.load(f)
-            # Handle models saved as (model, feature_columns)
-            models[name] = obj[0] if isinstance(obj, tuple) else obj
-    except FileNotFoundError:
-        print(f"⚠️ Model not found: credit_card_{name}.pkl")
+        if name == 'iso':
+            raw_scores = -model.decision_function(X_scaled)
+            score = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min())
+            scores[name] = float(score.mean())
+        else:
+            probs = model.predict_proba(X_scaled)
+            score = float(probs[:, 1].mean())
+            scores[name] = score
+        print(f"✅ {name} model score: {scores[name]:.4f}")
     except Exception as e:
-        print(f"❌ Error loading model {name}: {e}")
+        print(f"❌ Error with model {name}: {e}")
+
 
 def predict_creditcard_fraud(df):
     df = df.copy()
