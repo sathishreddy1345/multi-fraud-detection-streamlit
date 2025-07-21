@@ -1,4 +1,4 @@
-# app.py — AI-Powered Fraud Detection System with Advanced Visualization
+# app.py — AI-Powered Fraud Detection System with Enhanced Visualizations (No SHAP)
 
 import streamlit as st
 import pandas as pd
@@ -7,19 +7,18 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
+# Fraud modules
 from fraud_modules import credit_card, paysim, loan, insurance
+
+# Visualizers
 from utils.visualizer import (
-    plot_bar, plot_shap_summary, plot_pie_chart, plot_confusion_report,
-    get_model_description, plot_boxplot, plot_radar,
-    download_model_report, plot_correlation_heatmap, plot_shap_force
+    plot_bar, plot_feature_importance, plot_permutation_importance,
+    plot_pie_chart, plot_confusion_report, get_model_description,
+    plot_boxplot, plot_radar, download_model_report, plot_correlation_heatmap
 )
 
-# 🔧 Page setup
-st.set_page_config(
-    page_title="🛡️ Multi-Fraud Detection System",
-    layout="wide",
-    page_icon="🧠"
-)
+# Page setup
+st.set_page_config(page_title="🛡️ Multi-Fraud Detection System", layout="wide", page_icon="🧠")
 
 # 🎨 Styling
 st.markdown("""
@@ -45,11 +44,19 @@ body {
 </style>
 """, unsafe_allow_html=True)
 
-# 📌 Sidebar
+# --------------------------
+# Sidebar Navigation
+# --------------------------
 st.sidebar.title("🧭 Navigation Panel")
 tabs = ["🏠 Home", "💳 Credit Card", "📱 PaySim", "🏦 Loan", "🚗 Insurance"]
 selected_tab = st.sidebar.radio("Select Fraud Type", tabs)
 
+# Redirect if button sets page state
+if "page" in st.session_state:
+    selected_tab = st.session_state["page"]
+    del st.session_state["page"]  # reset after redirect
+
+# Model info in sidebar
 if "Model Info" not in st.session_state:
     st.session_state["Model Info"] = {
         "💳 Credit Card": "RandomForest, XGBoost, CatBoost, LightGBM, Logistic Regression, IsolationForest",
@@ -66,7 +73,9 @@ if st.sidebar.button("🔁 Reset App"):
     st.session_state.clear()
     st.experimental_rerun()
 
-# 🧠 Prediction mapping
+# --------------------------
+# Fraud Module Mapping
+# --------------------------
 fraud_modules = {
     "💳 Credit Card": credit_card,
     "📱 PaySim": paysim,
@@ -80,10 +89,13 @@ function_map = {
     "🚗 Insurance": "predict_insurance_fraud"
 }
 
-# 🏠 Home Page
+# --------------------------
+# Home Page
+# --------------------------
 if selected_tab == "🏠 Home":
     st.title("🛡️ Multi-Fraud Detection Dashboard")
-    st.markdown("Welcome! Choose a fraud type from the sidebar or buttons below.")
+    st.markdown("Choose a fraud type from the sidebar or buttons below to start detection.")
+
     col1, col2 = st.columns(2)
     with col1:
         if st.button("💳 Credit Card Fraud"):
@@ -92,6 +104,7 @@ if selected_tab == "🏠 Home":
         if st.button("🏦 Loan Fraud"):
             st.session_state["page"] = "🏦 Loan"
             st.experimental_rerun()
+
     with col2:
         if st.button("📱 PaySim Fraud"):
             st.session_state["page"] = "📱 PaySim"
@@ -100,7 +113,9 @@ if selected_tab == "🏠 Home":
             st.session_state["page"] = "🚗 Insurance"
             st.experimental_rerun()
 
-# 🧪 Prediction Page
+# --------------------------
+# Prediction Pages
+# --------------------------
 if selected_tab in fraud_modules:
     st.title(f"{selected_tab} Detection")
     uploaded = st.file_uploader("📤 Upload a CSV file for analysis", type="csv")
@@ -118,18 +133,16 @@ if selected_tab in fraud_modules:
             if not model_scores:
                 st.error("❌ No models were able to make predictions.")
             else:
-                selected_model = plot_bar(model_scores) or list(model_scores.keys())[0]
-
+                selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
                 if selected_model is None:
-                    selected_model = next(iter(model_scores))  # fallback to first model
+                    selected_model = next(iter(model_scores))  # fallback
 
-
-                # Get model objects
                 all_models = fraud_modules[selected_tab].models
                 default_model = all_models.get("rf") or list(all_models.values())[0]
 
                 if processed is not None and not processed.isnull().all().all():
-                    plot_shap_summary(default_model, processed)
+                    # 🎯 Visualizations
+                    plot_feature_importance(default_model, processed)
                     plot_pie_chart(max(score, 0))
                     st.success(f"✅ Overall Fraud Likelihood: **{score * 100:.2f}%**")
 
@@ -143,7 +156,7 @@ if selected_tab in fraud_modules:
                     st.metric("Score", f"{model_scores[selected_model]*100:.2f}%")
                     st.markdown(get_model_description(selected_model))
 
-                    # Optional: Confusion Matrix
+                    # Confusion Matrix
                     if 'actual' in df.columns:
                         y_true = df['actual']
                         y_pred = [1 if model_scores[selected_model] > 0.5 else 0] * len(df)
@@ -156,6 +169,6 @@ if selected_tab in fraud_modules:
 
                     try:
                         model_object = all_models[selected_model]
-                        plot_shap_force(model_object, processed)
+                        plot_permutation_importance(model_object, processed)
                     except Exception as e:
-                        st.warning(f"⚠️ SHAP force plot not available: {e}")
+                        st.warning(f"⚠️ Permutation importance failed: {e}")
