@@ -3,6 +3,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+if not hasattr(np, 'bool'):
+    np.bool = bool
 import shap
 import matplotlib.pyplot as plt
 import seaborn as sns
