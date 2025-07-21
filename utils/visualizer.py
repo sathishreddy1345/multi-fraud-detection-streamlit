@@ -3,15 +3,11 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-
-# ✅ Fix np.bool deprecation for SHAP compatibility
-if not hasattr(np, 'bool'):
-    np.bool = bool
-
-import shap
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.inspection import permutation_importance
 
 # ------------------------------
 # 📊 Bar Chart
@@ -29,51 +25,47 @@ def plot_bar(model_scores, key=None):
 
 
 # ------------------------------
-# 🧠 SHAP Summary Plot (optional)
+# 🔍 Feature Importance Plot
 # ------------------------------
-def plot_shap_summary(model, X_processed):
-    st.subheader("🧠 SHAP Summary Plot")
+def plot_feature_importance(model, X_processed):
+    st.subheader("📌 Feature Importance (Model-Based)")
     try:
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X_processed)
+        if hasattr(model, "feature_importances_"):
+            importances = model.feature_importances_
+            features = X_processed.columns
+            df = pd.DataFrame({"Feature": features, "Importance": importances})
+            df = df.sort_values(by="Importance", ascending=False)
 
-        if isinstance(shap_values, list):
-            shap_values = shap_values[0]
-
-        if len(X_processed) < 2:
-            st.warning("⚠️ At least 2 rows required for beeswarm plot.")
+            fig, ax = plt.subplots(figsize=(10, 5))
+            sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
+            st.pyplot(fig)
         else:
-            shap.summary_plot(shap_values, X_processed, show=False)
-            st.pyplot(bbox_inches="tight")
+            st.info("⚠️ Feature importance not available for this model.")
     except Exception as e:
-        st.error(f"❌ SHAP Summary Plot failed: {e}")
+        st.error(f"❌ Feature importance plot failed: {e}")
 
 
 # ------------------------------
-# 🧠 SHAP Force Plot (fixed)
+# 🧪 Permutation Importance
 # ------------------------------
-def plot_shap_force(model, X_processed):
-    st.subheader("🧠 SHAP Force Plot")
+def plot_permutation_importance(model, X, y=None):
+    st.subheader("🔄 Permutation Importance")
     try:
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X_processed)
+        result = permutation_importance(model, X, y if y is not None else np.zeros(len(X)), n_repeats=5, random_state=42)
+        df = pd.DataFrame({
+            "Feature": X.columns,
+            "Importance": result.importances_mean
+        }).sort_values(by="Importance", ascending=False)
 
-        st.write("Showing force plot for the first row:")
-        force_plot_html = shap.force_plot(
-            explainer.expected_value,
-            shap_values[0].values,
-            X_processed.iloc[0],
-            matplotlib=False
-        )
-
-        st.components.v1.html(shap.getjs(), height=0)
-        st.components.v1.html(force_plot_html.html(), height=300)
+        fig, ax = plt.subplots(figsize=(10, 5))
+        sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
+        st.pyplot(fig)
     except Exception as e:
-        st.error(f"❌ SHAP Force Plot failed: {e}")
+        st.error(f"❌ Permutation importance failed: {e}")
 
 
 # ------------------------------
-# 🥧 Pie Chart (Safe)
+# 🥧 Pie Chart
 # ------------------------------
 def plot_pie_chart(probability_score):
     st.subheader("🥧 Estimated Fraud Likelihood")
