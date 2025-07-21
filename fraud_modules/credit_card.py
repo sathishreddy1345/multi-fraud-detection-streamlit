@@ -13,6 +13,7 @@ from sklearn.linear_model import LogisticRegression
 
 model_names = ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']
 models = {}
+model_features = {}
 
 # ✅ Load models from the models/ directory
 for name in model_names:
@@ -20,8 +21,11 @@ for name in model_names:
         path = f"models/credit_card_{name}.pkl"
         with open(path, "rb") as f:
             obj = pickle.load(f)
-            # In case model was saved as (model, feature_columns)
-            models[name] = obj[0] if isinstance(obj, tuple) else obj
+            if isinstance(obj, tuple):
+                models[name] = obj[0]
+                model_features[name] = obj[1]
+            else:
+                models[name] = obj
     except FileNotFoundError:
         print(f"⚠️ Model not found: credit_card_{name}.pkl")
     except Exception as e:
@@ -36,31 +40,22 @@ def predict_creditcard_fraud(df):
     df = df.select_dtypes(include=[np.number])
     df.fillna(0, inplace=True)
 
-    # ⚠️ Feature fix: match trained model's feature count
-    try:
-        try:
-            expected_features = next(iter(models.values())).n_features_in_
-        except:
-            expected_features = 29  # fallback
-        if df.shape[1] > expected_features:
-            df = df.iloc[:, :expected_features]
-        elif df.shape[1] < expected_features:
-            raise ValueError(f"Input has {df.shape[1]} features, expected {expected_features}.")
-    except:
-        expected_features = 29
-        df = df.iloc[:, :expected_features]
-
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(df)
-
     scores = {}
     for name, model in models.items():
         try:
+            features = model_features.get(name, df.columns[:model.n_features_in_])
+            X = df[features].copy()
+
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
+
             if name == 'iso':
                 score = (-model.decision_function(X_scaled)).mean()
             else:
                 score = model.predict_proba(X_scaled)[:, 1].mean()
+
             scores[name] = score
+            print(f"✅ {name} score: {score:.4f}")
         except Exception as e:
             print(f"❌ Error with model {name}: {e}")
 
