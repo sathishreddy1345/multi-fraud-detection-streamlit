@@ -16,7 +16,10 @@ def plot_bar(model_scores):
     df = pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score']).sort_values(by='Score', ascending=False)
     st.bar_chart(df)
 
-    selected_model = st.selectbox("🔍 Select a Model to Inspect", df.index.tolist(), key="model_inspector")
+    import uuid
+    unique_key = f"model_inspector_{uuid.uuid4()}"
+    selected_model = st.selectbox("🔍 Select a Model to Inspect", df.index.tolist(), key=unique_key)
+
     if selected_model:
         st.markdown(f"### 🔎 {selected_model.upper()} Model Insights")
         st.metric("Fraud Confidence Score", f"{model_scores[selected_model]*100:.2f}%")
