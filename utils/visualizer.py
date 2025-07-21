@@ -28,27 +28,34 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🧠 SHAP Summary Plot
 # ------------------------------
-def plot_shap_summary(model, X_processed):
-    st.subheader("🧠 SHAP Explanation")
+def plot_shap_force(model, X_processed):
+    import shap
+    import numpy as np
+
+    # Monkey patch np.bool for backward compatibility
+    if not hasattr(np, 'bool'):
+        np.bool = bool
+
+    st.subheader("🧠 SHAP Force Plot")
     try:
         explainer = shap.Explainer(model)
         shap_values = explainer(X_processed)
 
-        if len(X_processed) < 2:
-            st.warning("⚠️ SHAP needs ≥2 rows — showing single row waterfall plot")
-            try:
-                exp = shap.Explanation(values=shap_values[0].values,
-                                       base_values=explainer.expected_value,
-                                       data=X_processed.iloc[0])
-                shap.plots.waterfall(exp, show=False)
-                st.pyplot(bbox_inches="tight")
-            except Exception as e:
-                st.error(f"❌ Waterfall plot failed: {e}")
-        else:
-            shap.plots.beeswarm(shap_values, show=False)
-            st.pyplot(bbox_inches="tight")
+        # Visualize for the first sample
+        st.write("Showing force plot for the first row:")
+        force_plot_html = shap.force_plot(
+            explainer.expected_value,
+            shap_values[0].values,
+            X_processed.iloc[0],
+            matplotlib=False
+        )
+
+        # Display force plot
+        st.components.v1.html(shap.getjs(), height=0)
+        st.components.v1.html(force_plot_html.html(), height=300)
+
     except Exception as e:
-        st.error(f"❌ SHAP summary plot failed: {e}")
+        st.error(f"❌ SHAP Force Plot failed: {e}")
 
 # ------------------------------
 # 🧠 SHAP Force Plot
