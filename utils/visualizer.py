@@ -61,8 +61,8 @@ def plot_shap_force(model, X_processed):
         explainer = shap.Explainer(model)
         shap_values = explainer(X_processed)
 
-        # Only one sample for force plot
-        st.write("Visualizing force plot for the first row in your dataset:")
+        # For shap.force_plot compatibility with SHAP v0.20+
+        st.write("Showing force plot for the first row:")
         force_plot_html = shap.force_plot(
             explainer.expected_value,
             shap_values.values[0],
@@ -74,7 +74,6 @@ def plot_shap_force(model, X_processed):
         st.components.v1.html(force_plot_html.html(), height=300)
     except Exception as e:
         st.error(f"❌ SHAP Force Plot failed: {e}")
-
 
 # ------------------------------
 # 🥧 Pie Chart (Safe)
