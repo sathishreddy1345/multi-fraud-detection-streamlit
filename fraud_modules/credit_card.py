@@ -37,6 +37,8 @@ for name in model_names:
 # 🧠 Predict Function
 # --------------------
 def predict_creditcard_fraud(df):
+    if df.empty or df.isnull().all().all():
+    raise ValueError("Input dataframe is empty or contains only NaNs.")
     df = df.copy()
 
     # Drop label column if present
