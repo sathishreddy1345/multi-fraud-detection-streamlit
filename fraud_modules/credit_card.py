@@ -38,7 +38,10 @@ def predict_creditcard_fraud(df):
 
     # ⚠️ Feature fix: match trained model's feature count
     try:
-        expected_features = models['rf'].n_features_in_
+        try:
+            expected_features = next(iter(models.values())).n_features_in_
+        except:
+            expected_features = 29  # fallback
         if df.shape[1] > expected_features:
             df = df.iloc[:, :expected_features]
         elif df.shape[1] < expected_features:
