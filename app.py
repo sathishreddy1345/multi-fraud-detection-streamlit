@@ -144,8 +144,15 @@ if selected_tab in fraud_modules:
 
 
             plot_radar(model_scores)
+            selected_model = plot_bar(model_scores)
             plot_boxplot(processed)
-            plot_shap_force(selected_model_object, processed)
+            
+            try:
+                selected_model_object = models[selected_model]
+                plot_shap_force(selected_model_object, processed)
+            except Exception as e:
+                st.warning(f"⚠️ SHAP force plot not available: {e}")
+
             plot_correlation_heatmap(processed)
             
             download_model_report(processed)
