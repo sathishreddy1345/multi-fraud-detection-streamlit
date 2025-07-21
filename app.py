@@ -6,6 +6,9 @@ import time
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, message=".*force_all_finite.*")
+
 
 # Fraud modules
 from fraud_modules import credit_card, paysim, loan, insurance
