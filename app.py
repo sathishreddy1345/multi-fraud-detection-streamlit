@@ -9,7 +9,7 @@ from fraud_modules import credit_card, paysim, loan, insurance
 
 from utils.visualizer import (
     plot_bar, plot_shap_summary, plot_pie_chart, plot_confusion_report,get_model_description,
-    plot_boxplot, plot_radar, download_model_report, plot_correlation_heatmap
+    plot_boxplot, plot_radar, download_model_report, plot_correlation_heatmap,plot_shap_force
 )
 
 
