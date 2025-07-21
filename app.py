@@ -116,7 +116,7 @@ if selected_tab in fraud_modules:
                 score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
 
             # 📊 Bar chart of all model scores
-            plot_bar(model_scores)
+            selected_model = plot_bar(model_scores)
 
             # 🧠 SHAP Explanation (default to RF if present)
             default_model = fraud_modules[selected_tab].models.get("rf") or list(fraud_modules[selected_tab].models.values())[0]
@@ -144,7 +144,7 @@ if selected_tab in fraud_modules:
 
 
             plot_radar(model_scores)
-            selected_model = plot_bar(model_scores)
+          
             plot_boxplot(processed)
             
             try:
