@@ -3,8 +3,11 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+
+# ✅ Fix np.bool deprecation for SHAP compatibility
 if not hasattr(np, 'bool'):
     np.bool = bool
+
 import shap
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -26,22 +29,35 @@ def plot_bar(model_scores, key=None):
 
 
 # ------------------------------
-# 🧠 SHAP Summary Plot
+# 🧠 SHAP Summary Plot (optional)
+# ------------------------------
+def plot_shap_summary(model, X_processed):
+    st.subheader("🧠 SHAP Summary Plot")
+    try:
+        explainer = shap.Explainer(model)
+        shap_values = explainer(X_processed)
+
+        if isinstance(shap_values, list):
+            shap_values = shap_values[0]
+
+        if len(X_processed) < 2:
+            st.warning("⚠️ At least 2 rows required for beeswarm plot.")
+        else:
+            shap.summary_plot(shap_values, X_processed, show=False)
+            st.pyplot(bbox_inches="tight")
+    except Exception as e:
+        st.error(f"❌ SHAP Summary Plot failed: {e}")
+
+
+# ------------------------------
+# 🧠 SHAP Force Plot (fixed)
 # ------------------------------
 def plot_shap_force(model, X_processed):
-    import shap
-    import numpy as np
-
-    # Monkey patch np.bool for backward compatibility
-    if not hasattr(np, 'bool'):
-        np.bool = bool
-
     st.subheader("🧠 SHAP Force Plot")
     try:
         explainer = shap.Explainer(model)
         shap_values = explainer(X_processed)
 
-        # Visualize for the first sample
         st.write("Showing force plot for the first row:")
         force_plot_html = shap.force_plot(
             explainer.expected_value,
@@ -50,37 +66,11 @@ def plot_shap_force(model, X_processed):
             matplotlib=False
         )
 
-        # Display force plot
-        st.components.v1.html(shap.getjs(), height=0)
-        st.components.v1.html(force_plot_html.html(), height=300)
-
-    except Exception as e:
-        st.error(f"❌ SHAP Force Plot failed: {e}")
-
-# ------------------------------
-# 🧠 SHAP Force Plot
-# ------------------------------
-def plot_shap_force(model, X_processed):
-    import shap
-    import numpy as np
-    st.subheader("🧠 SHAP Force Plot")
-    try:
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X_processed)
-
-        # For shap.force_plot compatibility with SHAP v0.20+
-        st.write("Showing force plot for the first row:")
-        force_plot_html = shap.force_plot(
-            explainer.expected_value,
-            shap_values.values[0],
-            X_processed.iloc[0],
-            matplotlib=False
-        )
-
         st.components.v1.html(shap.getjs(), height=0)
         st.components.v1.html(force_plot_html.html(), height=300)
     except Exception as e:
         st.error(f"❌ SHAP Force Plot failed: {e}")
+
 
 # ------------------------------
 # 🥧 Pie Chart (Safe)
@@ -88,7 +78,6 @@ def plot_shap_force(model, X_processed):
 def plot_pie_chart(probability_score):
     st.subheader("🥧 Estimated Fraud Likelihood")
 
-    # ✅ Clamp score to [0, 1] range
     if not isinstance(probability_score, (float, int)) or np.isnan(probability_score):
         probability_score = 0
     else:
@@ -110,6 +99,7 @@ def plot_pie_chart(probability_score):
     ax.axis('equal')
     st.pyplot(fig)
 
+
 # ------------------------------
 # 📋 Confusion Matrix + Report
 # ------------------------------
@@ -127,6 +117,7 @@ def plot_confusion_report(y_true, y_pred):
     ax.set_ylabel("Actual")
     st.pyplot(fig)
 
+
 # ------------------------------
 # 📦 Box Plot
 # ------------------------------
@@ -138,6 +129,7 @@ def plot_boxplot(df):
         st.pyplot(fig)
     else:
         st.info("📭 No numeric data to plot.")
+
 
 # ------------------------------
 # 🕸 Radar Chart
@@ -157,6 +149,7 @@ def plot_radar(model_scores):
     ax.set_ylim(0, 1)
     st.pyplot(fig)
 
+
 # ------------------------------
 # 🌡️ Correlation Heatmap
 # ------------------------------
@@ -170,11 +163,13 @@ def plot_correlation_heatmap(df):
     else:
         st.warning("Not enough features for correlation matrix.")
 
+
 # ------------------------------
 # ⬇️ Download Report
 # ------------------------------
 def download_model_report(df, filename="fraud_report.csv"):
     st.download_button("⬇️ Download Model Report CSV", data=df.to_csv(index=False).encode(), file_name=filename, mime="text/csv")
+
 
 # ------------------------------
 # 🧾 Model Descriptions
