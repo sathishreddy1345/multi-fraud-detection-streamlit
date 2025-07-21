@@ -1,3 +1,4 @@
+# Saving properly with feature track
 # fraud_modules/credit_card.py
 
 import pickle
@@ -15,7 +16,7 @@ model_names = ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']
 models = {}
 model_features = {}
 
-# ✅ Load models from the models/ directory
+# ✅ Load models and their trained feature columns
 for name in model_names:
     try:
         path = f"models/credit_card_{name}.pkl"
@@ -23,17 +24,19 @@ for name in model_names:
             obj = pickle.load(f)
             if isinstance(obj, tuple):
                 models[name] = obj[0]
-                model_features[name] = obj[1]
+                model_features[name] = obj[1]  # Trained feature names
             else:
                 models[name] = obj
+                model_features[name] = None  # Fallback
     except FileNotFoundError:
         print(f"⚠️ Model not found: credit_card_{name}.pkl")
     except Exception as e:
         print(f"❌ Error loading model {name}: {e}")
 
-def predict_creditcard_fraud(df):
+def predict_creditcard_fraud(df: pd.DataFrame):
     df = df.copy()
 
+    # Drop target if exists
     if 'Class' in df.columns:
         df.drop(columns=['Class'], inplace=True)
 
@@ -41,21 +44,32 @@ def predict_creditcard_fraud(df):
     df.fillna(0, inplace=True)
 
     scores = {}
+
     for name, model in models.items():
         try:
-            features = model_features.get(name, df.columns[:model.n_features_in_])
-            X = df[features].copy()
+            # Use correct feature list
+            feature_list = model_features.get(name)
 
+            if feature_list is None:
+                # fallback if no feature info stored
+                feature_list = df.columns[:model.n_features_in_]
+
+            # Ensure features match
+            X = df[feature_list].copy()
+
+            # Scale
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X)
 
+            # Predict
             if name == 'iso':
                 score = (-model.decision_function(X_scaled)).mean()
             else:
                 score = model.predict_proba(X_scaled)[:, 1].mean()
 
             scores[name] = score
-            print(f"✅ {name} score: {score:.4f}")
+            print(f"✅ {name} model score: {score:.4f}")
+
         except Exception as e:
             print(f"❌ Error with model {name}: {e}")
 
@@ -65,5 +79,5 @@ def predict_creditcard_fraud(df):
     final_score = np.mean(list(scores.values()))
     return final_score, scores, df
 
-# ✅ Make models available globally
+# Make models available globally
 globals()['models'] = models
