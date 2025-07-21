@@ -119,6 +119,9 @@ if selected_tab in fraud_modules:
                 st.error("❌ No models were able to make predictions.")
             else:
                 selected_model = plot_bar(model_scores)
+                if selected_model is None:
+                    selected_model = next(iter(model_scores))  # fallback to first model
+
 
                 # Get model objects
                 all_models = fraud_modules[selected_tab].models
