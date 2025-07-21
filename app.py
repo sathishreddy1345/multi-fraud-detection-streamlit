@@ -116,14 +116,17 @@ if selected_tab in fraud_modules:
                 score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
 
             # 📊 Bar chart of all model scores
-            selected_model = plot_bar(model_scores)
+            if processed is not None and not processed.isnull().all().all():
+                selected_model = plot_bar(model_scores)
 
             # 🧠 SHAP Explanation (default to RF if present)
             default_model = fraud_modules[selected_tab].models.get("rf") or list(fraud_modules[selected_tab].models.values())[0]
-            plot_shap_summary(default_model, processed)
+            if processed is not None and not processed.isnull().all().all():
+                plot_shap_summary(default_model, processed)
 
             # 🥧 Pie Chart
-            plot_pie_chart(score)
+            if processed is not None and not processed.isnull().all().all():
+                plot_pie_chart(score)
 
             st.success(f"✅ Overall Fraud Likelihood: **{score*100:.2f}%**")
 
@@ -140,20 +143,23 @@ if selected_tab in fraud_modules:
             if 'actual' in df.columns:
                 y_true = df['actual']
                 y_pred = [1 if model_scores[selected_model] > 0.5 else 0]*len(df)
-                plot_confusion_report(y_true, y_pred)
+                if processed is not None and not processed.isnull().all().all():
+                    plot_confusion_report(y_true, y_pred)
 
 
             plot_radar(model_scores)
-          
-            plot_boxplot(processed)
+            if processed is not None and not processed.isnull().all().all():
+                plot_boxplot(processed)
             
             try:
                 selected_model_object = models[selected_model]
-                plot_shap_force(selected_model_object, processed)
+                if processed is not None and not processed.isnull().all().all():
+                    plot_shap_force(selected_model_object, processed)
             except Exception as e:
                 st.warning(f"⚠️ SHAP force plot not available: {e}")
 
-            plot_correlation_heatmap(processed)
-            
-            download_model_report(processed)
+            if processed is not None and not processed.isnull().all().all():
+                plot_correlation_heatmap(processed)
+            if processed is not None and not processed.isnull().all().all():
+                download_model_report(processed)
 
