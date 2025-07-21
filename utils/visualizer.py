@@ -5,8 +5,7 @@ import shap
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
-import io
-import base64
+from sklearn.ensemble import IsolationForest
 
 # ------------------------------
 # 📊 All Model Scores Bar Chart
@@ -14,6 +13,10 @@ import base64
 def plot_bar(model_scores):
     st.subheader("📊 All Model Prediction Scores")
     df = pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score']).sort_values(by='Score', ascending=False)
+
+    # 💡 Debug line to show model keys
+    st.write("✅ Models that returned scores:", list(df.index))
+
     st.bar_chart(df)
 
     selected_model = st.selectbox("🔍 Select a Model to Inspect", df.index.tolist(), key="model_inspector")
@@ -24,33 +27,38 @@ def plot_bar(model_scores):
         st.markdown(get_model_description(selected_model))
 
 # ------------------------------
-# 🧠 SHAP Summary / Waterfall / Force
+# 🧠 SHAP Summary
 # ------------------------------
 def plot_shap_summary(model, X_processed):
     st.subheader("🧠 SHAP Explanation")
-    try:
-        explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(X_processed)
 
-        if isinstance(shap_values, list):  # Multi-class
-            shap_values = shap_values[0]
+    if isinstance(model, IsolationForest):
+        st.info("🚫 SHAP not supported for IsolationForest (unsupervised model).")
+        return
+
+    try:
+        explainer = shap.Explainer(model)
+        shap_values = explainer(X_processed)
 
         if len(X_processed) < 2:
             st.warning("⚠️ SHAP beeswarm needs ≥2 rows — showing single row waterfall plot")
             try:
-                exp = shap.Explanation(values=shap_values[0],
-                                       base_values=explainer.expected_value,
-                                       data=X_processed.iloc[0])
+                exp = shap.Explanation(
+                    values=shap_values[0].values,
+                    base_values=explainer.expected_value,
+                    data=X_processed.iloc[0]
+                )
                 shap.plots.waterfall(exp, show=False)
                 st.pyplot(bbox_inches="tight")
             except Exception as e:
                 st.error(f"❌ Waterfall plot failed: {e}")
         else:
             try:
-                shap.summary_plot(shap_values, X_processed, show=False)
+                shap.plots.beeswarm(shap_values, show=False)
                 st.pyplot(bbox_inches="tight")
             except Exception as e:
                 st.error(f"❌ SHAP summary plot failed: {e}")
+
     except Exception as e:
         st.error(f"❌ SHAP explanation failed: {e}")
 
@@ -59,11 +67,14 @@ def plot_shap_summary(model, X_processed):
 # ------------------------------
 def plot_shap_force(model, X_processed):
     st.subheader("🧠 SHAP Force Plot")
+    if isinstance(model, IsolationForest):
+        st.info("🚫 SHAP Force Plot not supported for IsolationForest.")
+        return
+
     try:
         explainer = shap.Explainer(model)
         shap_values = explainer(X_processed)
 
-        # Only one sample at a time for force plot
         st.write("Visualizing force plot for the first row in your dataset:")
         force_plot_html = shap.plots.force(
             explainer.expected_value,
@@ -78,7 +89,7 @@ def plot_shap_force(model, X_processed):
         st.error(f"❌ SHAP Force Plot failed: {e}")
 
 # ------------------------------
-# 🥧 Enhanced Pie Chart (Tiny Safe)
+# 🥧 Pie Chart for Prediction Score
 # ------------------------------
 def plot_pie_chart(probability_score):
     st.subheader("🥧 Estimated Fraud Likelihood")
