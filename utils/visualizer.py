@@ -1,3 +1,5 @@
+# utils/visualizer.py
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -5,18 +7,13 @@ import shap
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.ensemble import IsolationForest
 
 # ------------------------------
-# 📊 All Model Scores Bar Chart
+# 📊 Bar Chart
 # ------------------------------
 def plot_bar(model_scores):
     st.subheader("📊 All Model Prediction Scores")
     df = pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score']).sort_values(by='Score', ascending=False)
-
-    # 💡 Debug line to show model keys
-    st.write("✅ Models that returned scores:", list(df.index))
-
     st.bar_chart(df)
 
     selected_model = st.selectbox("🔍 Select a Model to Inspect", df.index.tolist(), key="model_inspector")
@@ -27,55 +24,40 @@ def plot_bar(model_scores):
         st.markdown(get_model_description(selected_model))
 
 # ------------------------------
-# 🧠 SHAP Summary
+# 🧠 SHAP Summary Plot
 # ------------------------------
 def plot_shap_summary(model, X_processed):
     st.subheader("🧠 SHAP Explanation")
-
-    if isinstance(model, IsolationForest):
-        st.info("🚫 SHAP not supported for IsolationForest (unsupervised model).")
-        return
-
     try:
         explainer = shap.Explainer(model)
         shap_values = explainer(X_processed)
 
         if len(X_processed) < 2:
-            st.warning("⚠️ SHAP beeswarm needs ≥2 rows — showing single row waterfall plot")
+            st.warning("⚠️ SHAP needs ≥2 rows — showing single row waterfall plot")
             try:
-                exp = shap.Explanation(
-                    values=shap_values[0].values,
-                    base_values=explainer.expected_value,
-                    data=X_processed.iloc[0]
-                )
+                exp = shap.Explanation(values=shap_values[0].values,
+                                       base_values=explainer.expected_value,
+                                       data=X_processed.iloc[0])
                 shap.plots.waterfall(exp, show=False)
                 st.pyplot(bbox_inches="tight")
             except Exception as e:
                 st.error(f"❌ Waterfall plot failed: {e}")
         else:
-            try:
-                shap.plots.beeswarm(shap_values, show=False)
-                st.pyplot(bbox_inches="tight")
-            except Exception as e:
-                st.error(f"❌ SHAP summary plot failed: {e}")
-
+            shap.plots.beeswarm(shap_values, show=False)
+            st.pyplot(bbox_inches="tight")
     except Exception as e:
-        st.error(f"❌ SHAP explanation failed: {e}")
+        st.error(f"❌ SHAP summary plot failed: {e}")
 
 # ------------------------------
-# 🧬 SHAP Force Plot (for one row)
+# 🧠 SHAP Force Plot
 # ------------------------------
 def plot_shap_force(model, X_processed):
     st.subheader("🧠 SHAP Force Plot")
-    if isinstance(model, IsolationForest):
-        st.info("🚫 SHAP Force Plot not supported for IsolationForest.")
-        return
-
     try:
         explainer = shap.Explainer(model)
         shap_values = explainer(X_processed)
+        st.write("Showing force plot for the first row:")
 
-        st.write("Visualizing force plot for the first row in your dataset:")
         force_plot_html = shap.plots.force(
             explainer.expected_value,
             shap_values[0].values,
@@ -89,10 +71,17 @@ def plot_shap_force(model, X_processed):
         st.error(f"❌ SHAP Force Plot failed: {e}")
 
 # ------------------------------
-# 🥧 Pie Chart for Prediction Score
+# 🥧 Pie Chart (Safe)
 # ------------------------------
 def plot_pie_chart(probability_score):
     st.subheader("🥧 Estimated Fraud Likelihood")
+
+    # ✅ Clamp score to [0, 1] range
+    if not isinstance(probability_score, (float, int)) or np.isnan(probability_score):
+        probability_score = 0
+    else:
+        probability_score = max(0, min(1, probability_score))
+
     values = [probability_score, 1 - probability_score]
     labels = ['Fraud', 'Not Fraud']
     explode = [0.1 if v < 0.01 else 0 for v in values]
@@ -101,14 +90,16 @@ def plot_pie_chart(probability_score):
         return f"{pct:.5f}%" if pct < 0.01 else f"{pct:.1f}%"
 
     fig, ax = plt.subplots()
-    wedges, texts, autotexts = ax.pie(values, labels=labels, explode=explode,
-                                      autopct=lambda pct: fmt(pct), startangle=90,
-                                      colors=['#ff6b6b', '#51cf66'])
+    wedges, texts, autotexts = ax.pie(
+        values, labels=labels, explode=explode,
+        autopct=lambda pct: fmt(pct), startangle=90,
+        colors=['#ff6b6b', '#51cf66']
+    )
     ax.axis('equal')
     st.pyplot(fig)
 
 # ------------------------------
-# 📋 Confusion Matrix and Report
+# 📋 Confusion Matrix + Report
 # ------------------------------
 def plot_confusion_report(y_true, y_pred):
     st.subheader("📋 Model Evaluation Report")
@@ -125,10 +116,10 @@ def plot_confusion_report(y_true, y_pred):
     st.pyplot(fig)
 
 # ------------------------------
-# 📦 Box Plot of Features
+# 📦 Box Plot
 # ------------------------------
 def plot_boxplot(df):
-    st.subheader("📦 Feature Distribution – Box Plot")
+    st.subheader("📦 Feature Distribution")
     if df.shape[1] > 0:
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.boxplot(data=df, ax=ax)
@@ -137,7 +128,7 @@ def plot_boxplot(df):
         st.info("📭 No numeric data to plot.")
 
 # ------------------------------
-# 🕸 Radar Chart for Model Scores
+# 🕸 Radar Chart
 # ------------------------------
 def plot_radar(model_scores):
     st.subheader("🕸 Radar Chart – Model Comparison")
@@ -155,7 +146,7 @@ def plot_radar(model_scores):
     st.pyplot(fig)
 
 # ------------------------------
-# 🌡️ Correlation Heatmap (Optional)
+# 🌡️ Correlation Heatmap
 # ------------------------------
 def plot_correlation_heatmap(df):
     st.subheader("🌡️ Correlation Heatmap")
@@ -168,7 +159,7 @@ def plot_correlation_heatmap(df):
         st.warning("Not enough features for correlation matrix.")
 
 # ------------------------------
-# 🖨️ Download CSV Report
+# ⬇️ Download Report
 # ------------------------------
 def download_model_report(df, filename="fraud_report.csv"):
     st.download_button("⬇️ Download Model Report CSV", data=df.to_csv(index=False).encode(), file_name=filename, mime="text/csv")
@@ -178,11 +169,11 @@ def download_model_report(df, filename="fraud_report.csv"):
 # ------------------------------
 def get_model_description(model_key):
     descriptions = {
-        "rf": "🌲 **Random Forest**: Ensemble of decision trees. Great for general tabular prediction tasks.",
-        "xgb": "🚀 **XGBoost**: Powerful gradient boosting model. Fast, accurate, and handles overfitting well.",
-        "lgbm": "🔆 **LightGBM**: Light-weight boosting model. Great for large datasets and speed.",
-        "cat": "🐱 **CatBoost**: From Yandex. Excellent handling of categorical variables and missing values.",
-        "lr": "📐 **Logistic Regression**: A simple, interpretable linear model for binary classification.",
-        "iso": "🚨 **Isolation Forest**: Anomaly detection technique for unsupervised fraud flagging."
+        "rf": "🌲 **Random Forest**: Ensemble of decision trees.",
+        "xgb": "🚀 **XGBoost**: Gradient boosting framework.",
+        "lgbm": "🔆 **LightGBM**: Fast and scalable boosting.",
+        "cat": "🐱 **CatBoost**: Handles categorical data well.",
+        "lr": "📐 **Logistic Regression**: Simple and interpretable.",
+        "iso": "🚨 **Isolation Forest**: Detects outliers in data."
     }
-    return descriptions.get(model_key, "ℹ️ No detailed info for this model.")
+    return descriptions.get(model_key, "ℹ️ No description available.")
