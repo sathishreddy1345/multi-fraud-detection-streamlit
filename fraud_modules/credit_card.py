@@ -72,11 +72,15 @@ def predict_creditcard_fraud(df):
             if name == 'iso':
                 # Normalize IsolationForest score between 0 and 1
                 raw_scores = -model.decision_function(X_scaled)
-                score = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
-                scores[name] = score.mean()
+                row_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
+                scores[name] = row_scores.mean()
+                df[f'{name}_score'] = row_scores
+
             else:
-                score = model.predict_proba(X_scaled)[:, 1].mean()
-                scores[name] = score
+                row_scores = model.predict_proba(X_scaled)[:, 1]
+                scores[name] = row_scores.mean()
+                df[f'{name}_score'] = row_scores  # 👈 adds scores to dataframe
+
             print(f"✅ {name.upper()} model score: {scores[name]:.4f}")
         except Exception as e:
             print(f"❌ Error with model {name}: {e}")
