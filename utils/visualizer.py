@@ -15,6 +15,8 @@ from sklearn.inspection import permutation_importance
 def plot_bar(model_scores, key=None):
     st.subheader("📊 All Model Prediction Scores")
     df = pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score']).sort_values(by='Score', ascending=False)
+    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
     st.bar_chart(df)
     
     selected_model = st.selectbox("🔍 Select a Model to Inspect", df.index.tolist(), key=key)
@@ -35,6 +37,8 @@ def plot_feature_importance(model, X_processed):
             features = X_processed.columns
             df = pd.DataFrame({"Feature": features, "Importance": importances})
             df = df.sort_values(by="Importance", ascending=False)
+            df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
 
             fig, ax = plt.subplots(figsize=(10, 5))
             sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
@@ -59,6 +63,8 @@ def plot_permutation_importance(model, X, y=None):
 
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
+        df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
         st.pyplot(fig)
     except Exception as e:
         st.error(f"❌ Permutation importance failed: {e}")
@@ -82,6 +88,8 @@ def plot_pie_chart(probability_score):
     def fmt(pct):
         return f"{pct:.5f}%" if pct < 0.01 else f"{pct:.1f}%"
 
+    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
     fig, ax = plt.subplots()
     wedges, texts, autotexts = ax.pie(
         values, labels=labels, explode=explode,
@@ -100,6 +108,8 @@ def plot_confusion_report(y_true, y_pred):
     report = classification_report(y_true, y_pred, output_dict=True)
     df = pd.DataFrame(report).transpose()
     st.dataframe(df.style.highlight_max(axis=0))
+    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
 
     st.markdown("#### 🔢 Confusion Matrix")
     cm = confusion_matrix(y_true, y_pred)
@@ -115,6 +125,8 @@ def plot_confusion_report(y_true, y_pred):
 # ------------------------------
 def plot_boxplot(df):
     st.subheader("📦 Feature Distribution")
+    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
     if df.shape[1] > 0:
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.boxplot(data=df, ax=ax)
@@ -133,6 +145,8 @@ def plot_radar(model_scores):
     values += values[:1]
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles += angles[:1]
+    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
 
     fig, ax = plt.subplots(subplot_kw=dict(polar=True))
     ax.plot(angles, values, 'o-', linewidth=2)
@@ -150,6 +164,8 @@ def plot_correlation_heatmap(df):
     if df.shape[1] > 1:
         corr = df.corr()
         fig, ax = plt.subplots()
+        df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
         sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
         st.pyplot(fig)
     else:
