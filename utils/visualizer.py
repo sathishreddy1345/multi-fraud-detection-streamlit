@@ -53,14 +53,14 @@ def plot_feature_importance(model, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model, X):
+def plot_permutation_importance(model, X, y):
     st.subheader("🎯 Permutation Feature Importance")
     try:
         if isinstance(model, tuple):
             model, feature_columns = model
             X = X[feature_columns]
 
-        result = permutation_importance(model, X, model.predict, n_repeats=5, random_state=42)
+        result = permutation_importance(model, X, y, n_repeats=5, random_state=42)
         importances = result.importances_mean
 
         fig, ax = plt.subplots(figsize=(10, 5))
@@ -68,6 +68,7 @@ def plot_permutation_importance(model, X):
         ax.barh(np.array(X.columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
+
     except Exception as e:
         st.warning(f"⚠️ Permutation importance failed: {e}")
 
