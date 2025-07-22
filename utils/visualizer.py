@@ -53,32 +53,32 @@ def plot_feature_importance(model, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model, X, y=None):
+# ------------------------------
+# 🧪 Permutation Importance
+# ------------------------------
+def plot_permutation_importance(model_tuple, X):
     st.subheader("🎯 Permutation Feature Importance")
+
+    model, feature_columns = model_tuple
+
+    # ❗ Check if actual labels exist
+    if 'actual' not in X.columns:
+        st.info("⚠️ Permutation importance requires an 'actual' column with true labels. Skipping.")
+        return
+
     try:
-        # Unpack if passed as tuple
-        if isinstance(model, tuple):
-            model, feature_columns = model
-            X = X[feature_columns]
+        y_true = X['actual']
+        X_aligned = X[feature_columns]
 
-        if y is None:
-            st.warning("⚠️ Permutation importance needs true labels (`actual` column). Skipped.")
-            return
-
-        from sklearn.inspection import permutation_importance
         result = permutation_importance(
-            estimator=model,
-            X=X,
-            y=y,
-            n_repeats=5,
-            random_state=42,
-            scoring="accuracy"
+            model, X_aligned, y_true,
+            n_repeats=5, random_state=42
         )
         importances = result.importances_mean
 
         fig, ax = plt.subplots(figsize=(10, 5))
         sorted_idx = np.argsort(importances)
-        ax.barh(np.array(X.columns)[sorted_idx], importances[sorted_idx])
+        ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
