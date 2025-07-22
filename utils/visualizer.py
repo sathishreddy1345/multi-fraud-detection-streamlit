@@ -138,13 +138,18 @@ def plot_boxplot(df):
 # ------------------------------
 def plot_radar(model_scores):
     st.subheader("🕸 Radar Chart – Model Comparison")
+    
+    if not model_scores:
+        st.warning("⚠️ No model scores available.")
+        return
+
     labels = list(model_scores.keys())
     values = list(model_scores.values())
+
+    # Close the loop for radar chart
     values += values[:1]
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles += angles[:1]
-    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
-
 
     fig, ax = plt.subplots(subplot_kw=dict(polar=True))
     ax.plot(angles, values, 'o-', linewidth=2)
