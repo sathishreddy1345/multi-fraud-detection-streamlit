@@ -180,10 +180,12 @@ if selected_tab in fraud_modules:
                 plot_boxplot(processed)
                 plot_correlation_heatmap(processed)
                 download_model_report(processed)
-
+                
                 try:
                     model_object = all_models[selected_model]
-                    plot_permutation_importance(model_object, processed, y_true)
-
+                    y_true = df['actual'] if 'actual' in df.columns else None
+                    plot_permutation_importance(model_object, processed, y=y_true)
                 except Exception as e:
                     st.warning(f"⚠️ Permutation importance failed: {e}")
+                
+                
