@@ -53,14 +53,27 @@ def plot_feature_importance(model, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model, X, y):
+def plot_permutation_importance(model, X, y=None):
     st.subheader("🎯 Permutation Feature Importance")
     try:
+        # Unpack if passed as tuple
         if isinstance(model, tuple):
             model, feature_columns = model
             X = X[feature_columns]
 
-        result = permutation_importance(model, X, y, n_repeats=5, random_state=42)
+        if y is None:
+            st.warning("⚠️ Permutation importance needs true labels (`actual` column). Skipped.")
+            return
+
+        from sklearn.inspection import permutation_importance
+        result = permutation_importance(
+            estimator=model,
+            X=X,
+            y=y,
+            n_repeats=5,
+            random_state=42,
+            scoring="accuracy"
+        )
         importances = result.importances_mean
 
         fig, ax = plt.subplots(figsize=(10, 5))
