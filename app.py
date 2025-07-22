@@ -183,6 +183,7 @@ if selected_tab in fraud_modules:
 
                 try:
                     model_object = all_models[selected_model]
-                    plot_permutation_importance(model_object, processed)
+                    plot_permutation_importance(model_object, processed, y_true)
+
                 except Exception as e:
                     st.warning(f"⚠️ Permutation importance failed: {e}")
