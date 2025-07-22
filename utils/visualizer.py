@@ -76,6 +76,7 @@ def plot_permutation_importance(model, X, y=None):
 def plot_pie_chart(probability_score):
     st.subheader("🥧 Estimated Fraud Likelihood")
 
+    # ✅ Clamp score to [0, 1] range
     if not isinstance(probability_score, (float, int)) or np.isnan(probability_score):
         probability_score = 0
     else:
@@ -88,8 +89,6 @@ def plot_pie_chart(probability_score):
     def fmt(pct):
         return f"{pct:.5f}%" if pct < 0.01 else f"{pct:.1f}%"
 
-    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
-
     fig, ax = plt.subplots()
     wedges, texts, autotexts = ax.pie(
         values, labels=labels, explode=explode,
@@ -98,7 +97,6 @@ def plot_pie_chart(probability_score):
     )
     ax.axis('equal')
     st.pyplot(fig)
-
 
 # ------------------------------
 # 📋 Confusion Matrix + Report
