@@ -15,10 +15,13 @@ from sklearn.inspection import permutation_importance
 def plot_bar(model_scores, key=None):
     st.subheader("📊 All Model Prediction Scores")
     df = pd.DataFrame.from_dict(model_scores, orient='index', columns=['Score']).sort_values(by='Score', ascending=False)
-    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+
+    if df.empty:
+        st.warning("⚠️ No model scores to display.")
+        return None
 
     st.bar_chart(df)
-    
+
     selected_model = st.selectbox("🔍 Select a Model to Inspect", df.index.tolist(), key=key)
     if selected_model:
         st.metric("Fraud Confidence Score", f"{model_scores[selected_model]*100:.2f}%")
@@ -37,8 +40,6 @@ def plot_feature_importance(model, X_processed):
             features = X_processed.columns
             df = pd.DataFrame({"Feature": features, "Importance": importances})
             df = df.sort_values(by="Importance", ascending=False)
-            df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
-
 
             fig, ax = plt.subplots(figsize=(10, 5))
             sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
@@ -52,24 +53,23 @@ def plot_feature_importance(model, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_tuple, X):
-    importances = None
+def plot_permutation_importance(model, X):
+    st.subheader("🎯 Permutation Feature Importance")
     try:
-        model, feature_columns = model_tuple
-        X_aligned = X[feature_columns]  # Align input to training features
-        result = permutation_importance(model, X_aligned, model.predict, n_repeats=5, random_state=42)
-        importances = result.importances_mean
-    except Exception as e:
-        st.warning(f"⚠️ Permutation importance failed: {e}")
-        return
+        if isinstance(model, tuple):
+            model, feature_columns = model
+            X = X[feature_columns]
 
-    if importances is not None:
-        st.subheader("🎯 Permutation Feature Importance")
+        result = permutation_importance(model, X, model.predict, n_repeats=5, random_state=42)
+        importances = result.importances_mean
+
         fig, ax = plt.subplots(figsize=(10, 5))
         sorted_idx = np.argsort(importances)
-        ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
+        ax.barh(np.array(X.columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
+    except Exception as e:
+        st.warning(f"⚠️ Permutation importance failed: {e}")
 
 
 # ------------------------------
@@ -78,7 +78,6 @@ def plot_permutation_importance(model_tuple, X):
 def plot_pie_chart(probability_score):
     st.subheader("🥧 Estimated Fraud Likelihood")
 
-    # ✅ Clamp score to [0, 1] range
     if not isinstance(probability_score, (float, int)) or np.isnan(probability_score):
         probability_score = 0
     else:
@@ -100,24 +99,26 @@ def plot_pie_chart(probability_score):
     ax.axis('equal')
     st.pyplot(fig)
 
+
 # ------------------------------
 # 📋 Confusion Matrix + Report
 # ------------------------------
 def plot_confusion_report(y_true, y_pred):
     st.subheader("📋 Model Evaluation Report")
-    report = classification_report(y_true, y_pred, output_dict=True)
-    df = pd.DataFrame(report).transpose()
-    st.dataframe(df.style.highlight_max(axis=0))
-    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+    try:
+        report = classification_report(y_true, y_pred, output_dict=True)
+        df = pd.DataFrame(report).transpose()
+        st.dataframe(df.style.highlight_max(axis=0))
 
-
-    st.markdown("#### 🔢 Confusion Matrix")
-    cm = confusion_matrix(y_true, y_pred)
-    fig, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt="d", cmap="coolwarm", ax=ax)
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("Actual")
-    st.pyplot(fig)
+        st.markdown("#### 🔢 Confusion Matrix")
+        cm = confusion_matrix(y_true, y_pred)
+        fig, ax = plt.subplots()
+        sns.heatmap(cm, annot=True, fmt="d", cmap="coolwarm", ax=ax)
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+        st.pyplot(fig)
+    except Exception as e:
+        st.error(f"❌ Failed to generate confusion report: {e}")
 
 
 # ------------------------------
@@ -125,14 +126,14 @@ def plot_confusion_report(y_true, y_pred):
 # ------------------------------
 def plot_boxplot(df):
     st.subheader("📦 Feature Distribution")
-    df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
+    df = df.dropna(axis=1, how='all')
 
     if df.shape[1] > 0:
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.boxplot(data=df, ax=ax)
         st.pyplot(fig)
     else:
-        st.info("📭 No numeric data to plot.")
+        st.info("📭 No valid numeric features available for boxplot.")
 
 
 # ------------------------------
@@ -140,15 +141,13 @@ def plot_boxplot(df):
 # ------------------------------
 def plot_radar(model_scores):
     st.subheader("🕸 Radar Chart – Model Comparison")
-    
+
     if not model_scores:
         st.warning("⚠️ No model scores available.")
         return
 
     labels = list(model_scores.keys())
     values = list(model_scores.values())
-
-    # Close the loop for radar chart
     values += values[:1]
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles += angles[:1]
@@ -166,15 +165,15 @@ def plot_radar(model_scores):
 # ------------------------------
 def plot_correlation_heatmap(df):
     st.subheader("🌡️ Correlation Heatmap")
+    df = df.dropna(axis=1, how='all')
+
     if df.shape[1] > 1:
         corr = df.corr()
         fig, ax = plt.subplots()
-        df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
-
         sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
         st.pyplot(fig)
     else:
-        st.warning("Not enough features for correlation matrix.")
+        st.warning("📭 Not enough non-NaN features to plot correlation matrix.")
 
 
 # ------------------------------
