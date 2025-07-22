@@ -52,22 +52,24 @@ def plot_feature_importance(model, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model, X, y=None):
-    st.subheader("🔄 Permutation Importance")
+def plot_permutation_importance(model_tuple, X):
+    importances = None
     try:
-        result = permutation_importance(model, X, y if y is not None else np.zeros(len(X)), n_repeats=5, random_state=42)
-        df = pd.DataFrame({
-            "Feature": X.columns,
-            "Importance": result.importances_mean
-        }).sort_values(by="Importance", ascending=False)
-
-        fig, ax = plt.subplots(figsize=(10, 5))
-        sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
-        df = df.dropna(axis=1, how='all')  # Remove columns with all NaNs
-
-        st.pyplot(fig)
+        model, feature_columns = model_tuple
+        X_aligned = X[feature_columns]  # Align input to training features
+        result = permutation_importance(model, X_aligned, model.predict, n_repeats=5, random_state=42)
+        importances = result.importances_mean
     except Exception as e:
-        st.error(f"❌ Permutation importance failed: {e}")
+        st.warning(f"⚠️ Permutation importance failed: {e}")
+        return
+
+    if importances is not None:
+        st.subheader("🎯 Permutation Feature Importance")
+        fig, ax = plt.subplots(figsize=(10, 5))
+        sorted_idx = np.argsort(importances)
+        ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
+        ax.set_title("Permutation Importances")
+        st.pyplot(fig)
 
 
 # ------------------------------
