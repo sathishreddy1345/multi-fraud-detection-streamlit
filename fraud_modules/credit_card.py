@@ -4,30 +4,27 @@ import pickle
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-
+from sklearn.ensemble import RandomForestClassifier, IsolationForest
+from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
-from sklearn.ensemble import RandomForestClassifier, IsolationForest
-from sklearn.linear_model import LogisticRegression
 
 # --------------------
 # 🔃 Load all models
 # --------------------
 model_names = ['rf', 'xgb', 'lgbm', 'cat', 'lr', 'iso']
 models = {}
+feature_columns = []
 
 for name in model_names:
     try:
-        if name == 'xgb':
-            model = XGBClassifier()
-            model.load_model("models/credit_card_xgb.json")  # ✅ Correct for .json format
+        with open(f"models/credit_card_{name}.pkl", "rb") as f:
+            obj = pickle.load(f)
+            model, features = obj if isinstance(obj, tuple) else (obj, None)
             models[name] = model
-        else:
-            with open(f"models/credit_card_{name}.pkl", "rb") as f:
-                obj = pickle.load(f)
-                model = obj[0] if isinstance(obj, tuple) else obj
-                models[name] = model
+            if features:
+                feature_columns = features
     except FileNotFoundError:
         print(f"⚠️ Model not found: credit_card_{name}")
     except Exception as e:
@@ -39,57 +36,55 @@ for name in model_names:
 def predict_creditcard_fraud(df):
     if df.empty or df.isnull().all().all():
         raise ValueError("Input dataframe is empty or contains only NaNs.")
+
     df = df.copy()
 
     # Drop label column if present
     if 'Class' in df.columns:
         df.drop(columns=['Class'], inplace=True)
 
-    # Keep only numeric columns
+    # Ensure only numeric columns
     df = df.select_dtypes(include=[np.number])
     df.fillna(0, inplace=True)
 
-    # Match feature size with model
-    try:
-        reference_model = next(iter(models.values()))
-        expected_features = reference_model.n_features_in_
-    except Exception:
-        expected_features = 29  # fallback
+    # Match expected features
+    if feature_columns:
+        for col in feature_columns:
+            if col not in df.columns:
+                df[col] = 0
+        df = df[feature_columns]
+    else:
+        raise ValueError("❌ Feature columns are not loaded from model pickle.")
 
-    if df.shape[1] > expected_features:
-        df = df.iloc[:, :expected_features]
-    elif df.shape[1] < expected_features:
-        raise ValueError(f"Input has {df.shape[1]} features; expected {expected_features}.")
-
-    # Standard scaling
+    # 🧪 Standard scaling
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df)
 
-    # Score collection
+    # 🎯 Predict with each model
     scores = {}
     for name, model in models.items():
         try:
             if name == 'iso':
-                # Normalize IsolationForest score between 0 and 1
                 raw_scores = -model.decision_function(X_scaled)
-                row_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
-                scores[name] = row_scores.mean()
-                df[f'{name}_score'] = row_scores
-
+                norm_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
+                df[f'{name}_score'] = norm_scores
+                scores[name] = norm_scores.mean()
             else:
-                row_scores = model.predict_proba(X_scaled)[:, 1]
-                scores[name] = row_scores.mean()
-                df[f'{name}_score'] = row_scores  # 👈 adds scores to dataframe
+                probs = model.predict_proba(X_scaled)[:, 1]
+                df[f'{name}_score'] = probs
+                scores[name] = probs.mean()
 
             print(f"✅ {name.upper()} model score: {scores[name]:.4f}")
+
         except Exception as e:
             print(f"❌ Error with model {name}: {e}")
 
     if not scores:
         raise ValueError("No valid models were able to make predictions.")
 
+    # Final average score
     final_score = np.mean(list(scores.values()))
     return final_score, scores, df
 
-# Export for app.py
+# 🌍 Global export
 globals()['models'] = models
