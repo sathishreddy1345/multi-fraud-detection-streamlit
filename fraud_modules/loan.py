@@ -1,3 +1,5 @@
+# fraud_modules/loan.py
+
 import pickle
 import numpy as np
 import pandas as pd
@@ -5,26 +7,67 @@ from sklearn.preprocessing import StandardScaler
 
 model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
 models = {}
+
+# 🔃 Load all models
 for name in model_names:
-    with open(f"models/loan_{name}.pkl", "rb") as f:
-        models[name] = pickle.load(f)
+    try:
+        with open(f"models/loan_{name}.pkl", "rb") as f:
+            obj = pickle.load(f)
+            model = obj[0] if isinstance(obj, tuple) else obj
+            feature_columns = obj[1] if isinstance(obj, tuple) else None
+            models[name] = (model, feature_columns)
+    except Exception as e:
+        print(f"❌ Failed loading {name}: {e}")
 
-scaler = StandardScaler()
-
+# 🔍 Prediction Function
 def predict_loan_fraud(df):
-    global models
-    X = df.copy()
-    X = X.select_dtypes(include="number").fillna(0)
-    X_scaled = scaler.fit_transform(X)
+    if df.empty or df.isnull().all().all():
+        raise ValueError("Input dataframe is empty or contains only NaNs.")
 
-    predictions = {}
-    for key, model in models.items():
-        if key == "iso":
-            preds = model.predict(X_scaled)
-            scores = np.where(preds == -1, 1, 0)
-        else:
-            scores = model.predict_proba(X_scaled)[:, 1]
-        predictions[key] = np.mean(scores)
+    df = df.copy()
 
-    avg_score = np.mean(list(predictions.values()))
-    return avg_score, predictions, pd.DataFrame(X_scaled, columns=X.columns)
+    # Drop label column if present
+    if 'Class' in df.columns:
+        df.drop(columns=['Class'], inplace=True)
+
+    # Keep numeric data only
+    df = df.select_dtypes(include=[np.number])
+    df.fillna(0, inplace=True)
+
+    # Ensure model compatibility
+    scores = {}
+    scored_df = df.copy()
+    for key, (model, features) in models.items():
+        try:
+            # Align features if present
+            if features is not None:
+                X_input = df[features]
+            else:
+                X_input = df
+
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X_input)
+
+            if key == "iso":
+                raw = -model.decision_function(X_scaled)
+                row_scores = (raw - raw.min()) / (raw.max() - raw.min() + 1e-9)
+                scores[key] = row_scores.mean()
+                scored_df[f"{key}_score"] = row_scores
+            else:
+                row_scores = model.predict_proba(X_scaled)[:, 1]
+                scores[key] = row_scores.mean()
+                scored_df[f"{key}_score"] = row_scores
+
+            print(f"✅ {key.upper()} model score: {scores[key]:.4f}")
+
+        except Exception as e:
+            print(f"❌ Error in model {key}: {e}")
+
+    if not scores:
+        raise ValueError("❌ No models were able to predict.")
+
+    final_score = np.mean(list(scores.values()))
+    return final_score, scores, scored_df
+
+# Export model dictionary
+globals()["models"] = {k: v[0] for k, v in models.items()}
