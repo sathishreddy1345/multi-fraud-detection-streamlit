@@ -132,7 +132,13 @@ if selected_tab in fraud_modules:
             with st.spinner("Analyzing... please wait ⏳"):
                 time.sleep(1)
                 fn = function_map[selected_tab]
-                score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
+                try:
+                    score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    st.error(f"❌ Prediction failed: {e}")
+
                 st.session_state["model_scores"] = model_scores
                 st.session_state["score"] = score
                 st.session_state["processed"] = processed
