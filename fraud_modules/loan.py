@@ -1,5 +1,3 @@
-# fraud_modules/loan.py
-
 import pickle
 import numpy as np
 import pandas as pd
@@ -21,6 +19,8 @@ for name in model_names:
     except Exception as e:
         print(f"❌ Failed loading loan_{name}: {e}")
 
+print("✅ Loaded models:", list(models.keys()))
+
 # -----------------------------
 # 🧠 Predict Function
 # -----------------------------
@@ -38,13 +38,21 @@ def predict_loan_fraud(df):
     df = df.select_dtypes(include=[np.number])
     df.fillna(0, inplace=True)
 
+    print("📊 Input columns:", df.columns.tolist())
+    print("📊 Input shape:", df.shape)
+
     scores = {}
     scored_df = df.copy()
 
     for key, (model, features) in models.items():
         try:
-            # Align features
-            X_input = df[features] if features else df
+            if features:
+                missing = set(features) - set(df.columns)
+                if missing:
+                    raise ValueError(f"Missing features for model {key}: {missing}")
+                X_input = df[features]
+            else:
+                X_input = df
 
             # Scale
             scaler = StandardScaler()
@@ -64,6 +72,8 @@ def predict_loan_fraud(df):
 
         except Exception as e:
             print(f"❌ Error in model {key}: {e}")
+            import traceback
+            traceback.print_exc()
 
     if not scores:
         raise ValueError("❌ No models were able to predict.")
