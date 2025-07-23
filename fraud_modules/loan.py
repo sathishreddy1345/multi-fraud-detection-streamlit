@@ -84,4 +84,8 @@ def predict_loan_fraud(df):
 # -----------------------------
 # 📦 Export cleaned model dict
 # -----------------------------
-globals()["models"] = {k: v[0] for k, v in models.items()}
+# Do not overwrite the main models dict
+# Instead expose a cleaned version separately for app visualizations
+models_plain = {k: v[0] for k, v in models.items()}
+globals()["models"] = models_plain
+
