@@ -34,41 +34,41 @@ def predict_loan_fraud(df):
     df = df.select_dtypes(include=[np.number])
     df.fillna(0, inplace=True)
 
-scores = {}
-scored_df = df.copy()
-for key in models:
-    model_info = models[key]
-    if isinstance(model_info, tuple):
-        model, features = model_info
-    else:
-        model = model_info
-        features = None
+    scores = {}
+    scored_df = df.copy()
 
-    try:
-        # Align features if available
-        if features is not None:
-            X_input = df[features]
+    for key in models:
+        model_info = models[key]
+        if isinstance(model_info, tuple):
+            model, features = model_info
         else:
-            X_input = df
+            model = model_info
+            features = None
 
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X_input)
+        try:
+            # Align features if available
+            if features is not None:
+                X_input = df[features]
+            else:
+                X_input = df
 
-        if key == "iso":
-            raw = -model.decision_function(X_scaled)
-            row_scores = (raw - raw.min()) / (raw.max() - raw.min() + 1e-9)
-            scores[key] = row_scores.mean()
-            scored_df[f"{key}_score"] = row_scores
-        else:
-            row_scores = model.predict_proba(X_scaled)[:, 1]
-            scores[key] = row_scores.mean()
-            scored_df[f"{key}_score"] = row_scores
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X_input)
 
-        print(f"✅ {key.upper()} model score: {scores[key]:.4f}")
+            if key == "iso":
+                raw = -model.decision_function(X_scaled)
+                row_scores = (raw - raw.min()) / (raw.max() - raw.min() + 1e-9)
+                scores[key] = row_scores.mean()
+                scored_df[f"{key}_score"] = row_scores
+            else:
+                row_scores = model.predict_proba(X_scaled)[:, 1]
+                scores[key] = row_scores.mean()
+                scored_df[f"{key}_score"] = row_scores
 
-    except Exception as e:
-        print(f"❌ Error in model {key}: {e}")
+            print(f"✅ {key.upper()} model score: {scores[key]:.4f}")
 
+        except Exception as e:
+            print(f"❌ Error in model {key}: {e}")
 
     if not scores:
         raise ValueError("❌ No models were able to predict.")
