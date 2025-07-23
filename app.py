@@ -1,5 +1,3 @@
-# app.py — AI-Powered Fraud Detection System with Enhanced Visualizations (No SHAP)
-
 import streamlit as st
 import pandas as pd
 import time
@@ -8,7 +6,6 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*force_all_finite.*")
-
 
 # Fraud modules
 from fraud_modules import credit_card, paysim, loan, insurance
@@ -134,15 +131,15 @@ if selected_tab in fraud_modules:
                 fn = function_map[selected_tab]
                 try:
                     score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
+                    st.session_state["model_scores"] = model_scores
+                    st.session_state["score"] = score
+                    st.session_state["processed"] = processed
+                    st.session_state["uploaded_df"] = df
                 except Exception as e:
                     import traceback
                     traceback.print_exc()
                     st.error(f"❌ Prediction failed: {e}")
-
-                st.session_state["model_scores"] = model_scores
-                st.session_state["score"] = score
-                st.session_state["processed"] = processed
-                st.session_state["uploaded_df"] = df
+                    st.stop()
 
     # Display results if available
     if "model_scores" in st.session_state and st.session_state["selected_tab"] == selected_tab:
@@ -186,12 +183,10 @@ if selected_tab in fraud_modules:
                 plot_boxplot(processed)
                 plot_correlation_heatmap(processed)
                 download_model_report(processed)
-                
+
                 try:
                     model_object = all_models[selected_model]
                     y_true = df['actual'] if 'actual' in df.columns else None
                     plot_permutation_importance(model_object, processed)
                 except Exception as e:
                     st.warning(f"⚠️ Permutation importance failed: {e}")
-                
-                
