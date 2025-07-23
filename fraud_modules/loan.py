@@ -5,53 +5,48 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+# -----------------------------
+# 🔃 Load all loan models
+# -----------------------------
 model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
 models = {}
 
-# 🔃 Load all models
 for name in model_names:
     try:
         with open(f"models/loan_{name}.pkl", "rb") as f:
             obj = pickle.load(f)
             model = obj[0] if isinstance(obj, tuple) else obj
-            feature_columns = obj[1] if isinstance(obj, tuple) else None
-            models[name] = (model, feature_columns)
+            features = obj[1] if isinstance(obj, tuple) else None
+            models[name] = (model, features)
     except Exception as e:
-        print(f"❌ Failed loading {name}: {e}")
+        print(f"❌ Failed loading loan_{name}: {e}")
 
-# 🔍 Prediction Function
+# -----------------------------
+# 🧠 Predict Function
+# -----------------------------
 def predict_loan_fraud(df):
     if df.empty or df.isnull().all().all():
         raise ValueError("Input dataframe is empty or contains only NaNs.")
 
     df = df.copy()
 
-    # Drop label column if present
-    if 'Class' in df.columns:
-        df.drop(columns=['Class'], inplace=True)
+    # Drop label if exists
+    if "Class" in df.columns:
+        df.drop(columns=["Class"], inplace=True)
 
-    # Keep numeric data only
+    # Keep numeric only
     df = df.select_dtypes(include=[np.number])
     df.fillna(0, inplace=True)
 
     scores = {}
     scored_df = df.copy()
 
-    for key in models:
-        model_info = models[key]
-        if isinstance(model_info, tuple):
-            model, features = model_info
-        else:
-            model = model_info
-            features = None
-
+    for key, (model, features) in models.items():
         try:
-            # Align features if available
-            if features is not None:
-                X_input = df[features]
-            else:
-                X_input = df
+            # Align features
+            X_input = df[features] if features else df
 
+            # Scale
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X_input)
 
@@ -76,5 +71,7 @@ def predict_loan_fraud(df):
     final_score = np.mean(list(scores.values()))
     return final_score, scores, scored_df
 
-# Export model dictionary
+# -----------------------------
+# 📦 Export cleaned model dict
+# -----------------------------
 globals()["models"] = {k: v[0] for k, v in models.items()}
