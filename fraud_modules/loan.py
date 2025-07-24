@@ -23,17 +23,17 @@ for name in model_names:
         print(f"❌ Failed loading loan_{name}: {e}")
 
 # -----------------------------
-# 📦 Load full dataset (for visualization fallback)
+# 📦 Load full dataset (for fallback visualizations)
 # -----------------------------
 try:
-    full_data = pd.read_csv("data/loan_training_data.csv")
-    print("✅ Loaded fallback loan training dataset")
+    full_data = pd.read_csv("data/loan.csv")  # Or use loan_training_data.csv if different
+    print("✅ Loaded fallback loan dataset for visualization")
 except Exception as e:
-    print(f"❌ Could not load fallback training data: {e}")
+    print(f"❌ Could not load fallback dataset: {e}")
     full_data = None
 
 # -----------------------------
-# 🧠 Predict Function
+# 🧠 Prediction Function
 # -----------------------------
 def predict_loan_fraud(df):
     if df.empty or df.isnull().all().all():
@@ -41,15 +41,12 @@ def predict_loan_fraud(df):
 
     df = df.copy()
 
-    # Drop label if exists
-    # Retain true labels as 'actual' for permutation
+    # 🏷️ Handle label as 'actual'
     if "Class" in df.columns:
         df["actual"] = df["Class"]
         df.drop(columns=["Class"], inplace=True)
 
-
-
-    # Keep numeric only
+    # 🔢 Numeric preprocessing
     df = df.select_dtypes(include=[np.number])
     df.fillna(0, inplace=True)
 
@@ -59,7 +56,7 @@ def predict_loan_fraud(df):
     scores = {}
     scored_df = df.copy()
 
-    for key, model in models.items():
+    for key, (model, features) in models.items():
         try:
             if features:
                 missing = set(features) - set(df.columns)
@@ -69,7 +66,7 @@ def predict_loan_fraud(df):
             else:
                 X_input = df
 
-            # Scale
+            # ⚖️ Scale input
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X_input)
 
@@ -95,38 +92,31 @@ def predict_loan_fraud(df):
 
     final_score = np.mean(list(scores.values()))
 
-    # -----------------------------
-    # 🧪 Visualization Fallback Logic
-    # -----------------------------
+    # 📌 Attach true labels for permutation importance
+    if "actual" in df.columns:
+        scored_df["actual"] = df["actual"].values
 
-    # 🧪 Visualization Fallback Logic
-if "actual" in df.columns:
-    scored_df["actual"] = df["actual"].values
+    # 🔁 Visualization Fallback Logic
+    if len(df) < 5 and full_data is not None:
+        print("🔁 Using full dataset for visualizations due to small input size")
+        fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
 
-# 🧪 Visualization fallback if input too small
-if len(df) < 5 and full_data is not None:
-    print("🔁 Using full dataset for visualizations due to small input size")
-    fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
-    if "Class" in full_data.columns:
-        fallback_df["actual"] = full_data["Class"].values
-    return final_score, scores, fallback_df
+        # Attach true labels from fallback
+        if "Class" in full_data.columns:
+            fallback_df["actual"] = full_data["Class"].values
 
-return final_score, scores, scored_df
+        return final_score, scores, fallback_df
 
-
-    
     return final_score, scores, scored_df
 
 
 # -----------------------------
-# 📦 Export cleaned model dict
+# 🌐 Expose models
 # -----------------------------
-# Use plain model dict for app-level visualizers
+# For app use (plain models only)
 models_plain = {k: v[0] for k, v in models.items()}
 models_full = models
+
 globals()["models"] = models_plain         # For predictions
 globals()["models_full"] = models_full     # For visualizations
-
-
-# Keep full models with features for internal prediction
-loan_models_with_features = models
+loan_models_with_features = models         # Backup with features
