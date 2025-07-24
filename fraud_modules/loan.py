@@ -113,10 +113,11 @@ def predict_loan_fraud(df):
 # -----------------------------
 # 🌐 Expose models
 # -----------------------------
-# For app use (plain models only)
+
 models_plain = {k: v[0] for k, v in models.items()}
 models_full = models
 
-globals()["models"] = models_plain         # For predictions
-globals()["models_full"] = models_full     # For visualizations
-loan_models_with_features = models         # Backup with features
+globals()["models"] = models_full         # Correct version used in prediction
+globals()["models_plain"] = models_plain  # If needed for feature-less visual use
+
+loan_models_with_features = models        # Optional alias
