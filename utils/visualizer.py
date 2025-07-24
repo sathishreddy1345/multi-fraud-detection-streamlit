@@ -180,16 +180,27 @@ def plot_radar(model_scores):
 def plot_correlation_heatmap(df):
     st.subheader("🌡️ Correlation Heatmap")
 
-    # Drop prediction score columns
+    # Drop model output columns like *_score
     input_features = df.loc[:, ~df.columns.str.endswith('_score')]
 
     if input_features.shape[1] > 1:
         corr = input_features.corr()
-        fig, ax = plt.subplots()
-        sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax, fmt=".2f")
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.heatmap(
+            corr,
+            annot=True,
+            cmap='coolwarm',
+            vmin=-1, vmax=1,  # Force full color range
+            center=0,
+            fmt=".2f",
+            linewidths=0.5,
+            linecolor='gray'
+        )
         st.pyplot(fig)
     else:
         st.warning("Not enough numeric features for correlation heatmap.")
+
 
 
 # ------------------------------
