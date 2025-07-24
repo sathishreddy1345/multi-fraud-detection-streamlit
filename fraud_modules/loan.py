@@ -97,6 +97,9 @@ def predict_loan_fraud(df):
     if len(df) < 5 and full_data is not None:
         print("🔁 Using full dataset for visualizations due to small input size")
         return final_score, scores, full_data.select_dtypes(include=[np.number]).fillna(0)
+        # Add actual labels if available
+    if "actual" in df.columns:
+        scored_df["actual"] = df["actual"].values
 
     return final_score, scores, scored_df
 
