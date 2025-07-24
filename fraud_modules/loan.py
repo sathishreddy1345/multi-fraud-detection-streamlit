@@ -106,15 +106,13 @@ def predict_loan_fraud(df):
     return final_score, scores, scored_df
 
 
-    # -----------------------------
-    # 🧪 Visualization Fallback Logic
-    # -----------------------------
 
-    if "actual" in df.columns:
-        scored_df["actual"] = df["actual"].values
+
+if "actual" in df.columns:
+    scored_df["actual"] = df["actual"].values
 
     # 🧪 Visualization Fallback Logic
-    if len(df) < 5 and full_data is not None:
+if len(df) < 5 and full_data is not None:
     print("🔁 Using full dataset for visualizations due to small input size")
     fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
         if "Class" in full_data.columns:
@@ -123,7 +121,8 @@ def predict_loan_fraud(df):
 
 
     
-    return final_score, scores, scored_df
+return final_score, scores, scored_df
+
 
 
 # -----------------------------
