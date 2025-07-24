@@ -95,7 +95,7 @@ def plot_feature_importance(model_tuple, X_processed):
 def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
     st.subheader("🎯 Permutation Feature Importance")
 
-    # Handle tuple or plain model
+    # Extract model and features
     if isinstance(model_tuple, tuple):
         model, feature_columns = model_tuple
     else:
@@ -103,7 +103,7 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
         feature_columns = X_processed.columns.tolist()
 
     try:
-        # Load dataset with labels from data folder
+        # Load full dataset from data folder
         data_path = f"data/{module_name}.csv"
         df = pd.read_csv(data_path)
 
@@ -118,12 +118,12 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
             st.warning("⚠️ Permutation importance requires a label column like 'Class' or 'Label'.")
             return
 
-        # Filter numeric columns and required features
+        # Ensure numeric + no NaNs
         df = df.select_dtypes(include=[np.number]).fillna(0)
 
-        missing = set(feature_columns) - set(df.columns)
-        if missing:
-            st.warning(f"⚠️ Dataset is missing required features: {missing}")
+        # Ensure features are all present
+        if not set(feature_columns).issubset(df.columns):
+            st.warning("⚠️ One or more required features are missing in dataset.")
             return
 
         X = df[feature_columns]
@@ -132,6 +132,11 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
         result = permutation_importance(model, X, y, n_repeats=5, random_state=42)
 
         importances = result.importances_mean
+        if len(importances) != len(feature_columns):
+            st.warning("⚠️ Importances mismatch with feature count.")
+            return
+
+        # Plot
         fig, ax = plt.subplots(figsize=(10, 5))
         sorted_idx = np.argsort(importances)
         ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
