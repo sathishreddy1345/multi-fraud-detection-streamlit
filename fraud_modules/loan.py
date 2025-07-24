@@ -55,7 +55,7 @@ def predict_loan_fraud(df):
     scores = {}
     scored_df = df.copy()
 
-    for key, (model, features) in models.items():
+    for key, model in models.items():
         try:
             if features:
                 missing = set(features) - set(df.columns)
@@ -104,5 +104,8 @@ def predict_loan_fraud(df):
 # -----------------------------
 # 📦 Export cleaned model dict
 # -----------------------------
-models_plain = {k: v[0] for k, v in models.items()}
-globals()["models"] = models_plain
+# Use plain model dict for app-level visualizers
+globals()["models"] = {k: v[0] for k, v in models.items()}
+
+# Keep full models with features for internal prediction
+loan_models_with_features = models
