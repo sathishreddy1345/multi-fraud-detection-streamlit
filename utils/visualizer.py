@@ -95,31 +95,41 @@ def plot_feature_importance(model_tuple, X_processed):
 def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
     st.subheader("🎯 Permutation Feature Importance")
 
-    # Inside plot_feature_importance
+    # Handle tuple or plain model
     if isinstance(model_tuple, tuple):
         model, feature_columns = model_tuple
     else:
         model = model_tuple
         feature_columns = X_processed.columns.tolist()
 
-
     try:
-        model, feature_columns = model_tuple
-
-        # Load original dataset with labels
+        # Load dataset with labels from data folder
         data_path = f"data/{module_name}.csv"
         df = pd.read_csv(data_path)
 
+        # Normalize label column to 'actual'
         if 'actual' not in df.columns:
-            st.warning("⚠️ Permutation importance requires an 'actual' column.")
+            for col in df.columns:
+                if col.lower() in ['class', 'label', 'target', 'fraud']:
+                    df['actual'] = df[col]
+                    break
+
+        if 'actual' not in df.columns:
+            st.warning("⚠️ Permutation importance requires a label column like 'Class' or 'Label'.")
+            return
+
+        # Filter numeric columns and required features
+        df = df.select_dtypes(include=[np.number]).fillna(0)
+
+        missing = set(feature_columns) - set(df.columns)
+        if missing:
+            st.warning(f"⚠️ Dataset is missing required features: {missing}")
             return
 
         X = df[feature_columns]
         y = df['actual']
 
-        result = permutation_importance(
-            model, X, y, n_repeats=5, random_state=42
-        )
+        result = permutation_importance(model, X, y, n_repeats=5, random_state=42)
 
         importances = result.importances_mean
         fig, ax = plt.subplots(figsize=(10, 5))
@@ -130,7 +140,6 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
 
     except Exception as e:
         st.warning(f"⚠️ Permutation importance failed: {e}")
-
 
 
 # ------------------------------
