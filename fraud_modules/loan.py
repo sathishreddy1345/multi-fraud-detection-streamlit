@@ -55,7 +55,12 @@ def predict_loan_fraud(df):
     scored_df = df.copy()
 
     for key, model_obj in models.items():
-        model, features = model_obj  # ✅ Fix: safely unpack model and features
+    if isinstance(model_obj, tuple) and len(model_obj) == 2:
+        model, features = model_obj
+    else:
+        model = model_obj
+        features = None
+
 
         try:
             if features:
