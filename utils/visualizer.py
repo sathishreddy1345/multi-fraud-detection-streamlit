@@ -95,7 +95,7 @@ def plot_feature_importance(model_tuple, X_processed):
 def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
     st.subheader("🎯 Permutation Feature Importance")
 
-    # Extract model and features
+    # Handle (model, feature_columns) or just model
     if isinstance(model_tuple, tuple):
         model, feature_columns = model_tuple
     else:
@@ -103,11 +103,11 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
         feature_columns = X_processed.columns.tolist()
 
     try:
-        # Load full dataset from data folder
+        # Load dataset with labels
         data_path = f"data/{module_name}.csv"
         df = pd.read_csv(data_path)
 
-        # Normalize label column to 'actual'
+        # Try to normalize label column to 'actual'
         if 'actual' not in df.columns:
             for col in df.columns:
                 if col.lower() in ['class', 'label', 'target', 'fraud']:
@@ -115,29 +115,34 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
                     break
 
         if 'actual' not in df.columns:
-            st.warning("⚠️ Permutation importance requires a label column like 'Class' or 'Label'.")
-            return
-        
-        if df['actual'].nunique() < 2:
-            st.warning("⚠️ Permutation importance needs both fraud and non-fraud cases.")
+            st.warning("⚠️ Permutation importance requires a label column like 'Class'.")
             return
 
-        # Ensure numeric + no NaNs
+        # Ensure numeric columns and required features exist
         df = df.select_dtypes(include=[np.number]).fillna(0)
 
-        # Ensure features are all present
-        if not set(feature_columns).issubset(df.columns):
-            st.warning("⚠️ One or more required features are missing in dataset.")
+        if df['actual'].nunique() < 2:
+            st.warning("⚠️ Permutation importance needs at least 2 classes (0 and 1) in 'actual'.")
+            return
+
+        missing = set(feature_columns) - set(df.columns)
+        if missing:
+            st.warning(f"⚠️ Missing features in dataset: {missing}")
             return
 
         X = df[feature_columns]
         y = df['actual']
 
-        result = permutation_importance(model, X, y, n_repeats=5, random_state=42)
+        # Optional: scale features if needed
+        from sklearn.preprocessing import StandardScaler
+        X_scaled = StandardScaler().fit_transform(X)
+
+        # Run permutation importance
+        result = permutation_importance(model, X_scaled, y, n_repeats=5, random_state=42)
 
         importances = result.importances_mean
-        if len(importances) != len(feature_columns):
-            st.warning("⚠️ Importances mismatch with feature count.")
+        if importances.sum() == 0:
+            st.warning("⚠️ All permutation importances are zero. The model may be uninformative.")
             return
 
         # Plot
