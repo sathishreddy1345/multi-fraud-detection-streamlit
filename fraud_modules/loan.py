@@ -105,7 +105,11 @@ def predict_loan_fraud(df):
 # 📦 Export cleaned model dict
 # -----------------------------
 # Use plain model dict for app-level visualizers
-globals()["models"] = {k: v[0] for k, v in models.items()}
+models_plain = {k: v[0] for k, v in models.items()}
+models_full = models
+globals()["models"] = models_plain         # For predictions
+globals()["models_full"] = models_full     # For visualizations
+
 
 # Keep full models with features for internal prediction
 loan_models_with_features = models
