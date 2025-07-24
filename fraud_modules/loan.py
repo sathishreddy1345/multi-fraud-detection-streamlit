@@ -40,7 +40,6 @@ def predict_loan_fraud(df):
     df = df.copy()
 
     # Drop label if exists
-    # Retain true labels as 'actual' for permutation
     if "Class" in df.columns:
         df["actual"] = df["Class"]
         df.drop(columns=["Class"], inplace=True)
@@ -55,7 +54,9 @@ def predict_loan_fraud(df):
     scores = {}
     scored_df = df.copy()
 
-    for key, (model, features) in models.items():
+    for key, model_obj in models.items():
+        model, features = model_obj  # ✅ Fix: safely unpack model and features
+
         try:
             if features:
                 missing = set(features) - set(df.columns)
@@ -65,7 +66,6 @@ def predict_loan_fraud(df):
             else:
                 X_input = df
 
-            # Scale
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X_input)
 
@@ -91,12 +91,11 @@ def predict_loan_fraud(df):
 
     final_score = np.mean(list(scores.values()))
 
-    # -----------------------------
-    # 🧪 Visualization Fallback Logic
-    # -----------------------------
+    # ✅ Add 'actual' column if exists
     if "actual" in df.columns:
         scored_df["actual"] = df["actual"].values
 
+    # ✅ Visualization fallback logic
     if len(df) < 5 and full_data is not None:
         print("🔁 Using full dataset for visualizations due to small input size")
         fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
