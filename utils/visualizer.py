@@ -55,11 +55,15 @@ def plot_bar(model_scores, key=None):
 def plot_feature_importance(model_obj, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
     try:
+        # Handle (model, features) tuple
         if isinstance(model_obj, tuple):
             model, feature_columns = model_obj
         else:
             model = model_obj
             feature_columns = list(X_processed.columns)
+
+        # Limit to aligned features only
+        X_input = X_processed[feature_columns] if feature_columns else X_processed
 
         if not hasattr(model, "feature_importances_"):
             st.info("⚠️ Feature importance not available for this model.")
@@ -67,11 +71,11 @@ def plot_feature_importance(model_obj, X_processed):
 
         importances = model.feature_importances_
 
-        if len(importances) != len(feature_columns):
+        if len(importances) != len(X_input.columns):
             raise ValueError("Mismatch between features and importances")
 
         df = pd.DataFrame({
-            "Feature": feature_columns,
+            "Feature": X_input.columns,
             "Importance": importances
         }).sort_values(by="Importance", ascending=False)
 
@@ -82,22 +86,27 @@ def plot_feature_importance(model_obj, X_processed):
         st.error(f"❌ Feature importance plot failed: {e}")
 
 
+
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_obj, X_processed):
+def plot_permutation_importance(model_obj, X_processed, fallback_dataset_path=None):
     st.subheader("🎯 Permutation Feature Importance")
 
     try:
+        # Unpack model and features
         if isinstance(model_obj, tuple):
             model, feature_columns = model_obj
         else:
             model = model_obj
             feature_columns = list(X_processed.columns)
 
-        if 'actual' not in X_processed.columns:
-            st.info("⚠️ Permutation importance requires an 'actual' column. Skipping.")
-            return
+        # If 'actual' not in X, try loading from fallback
+        if 'actual' not in X_processed.columns and fallback_dataset_path:
+            X_processed = pd.read_csv(fallback_dataset_path)
+            if 'actual' not in X_processed.columns:
+                st.warning("⚠️ Permutation importance still missing 'actual' column.")
+                return
 
         y_true = X_processed['actual']
         X_input = X_processed[feature_columns] if feature_columns else X_processed.drop(columns=['actual'])
@@ -113,7 +122,6 @@ def plot_permutation_importance(model_obj, X_processed):
 
     except Exception as e:
         st.warning(f"⚠️ Permutation importance failed: {e}")
-
 
 
 # ------------------------------
