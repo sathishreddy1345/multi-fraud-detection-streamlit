@@ -1,5 +1,3 @@
-# utils/visualizer.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,6 +6,29 @@ import seaborn as sns
 
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.inspection import permutation_importance
+
+# ------------------------------
+# 📥 Load dataset for module
+# ------------------------------
+def load_dataset_for_module(module_name):
+    try:
+        module_map = {
+            "loan": "data/loan.csv",
+            "credit_card": "data/creditcard.csv",
+            "paysim": "data/paysim.csv",
+            "insurance": "data/insurance.csv"
+        }
+        path = module_map.get(module_name.lower())
+        if not path:
+            st.warning(f"⚠️ No dataset file mapped for: {module_name}")
+            return None
+
+        df = pd.read_csv(path)
+        df = df.select_dtypes(include=[np.number]).fillna(0)
+        return df
+    except Exception as e:
+        st.error(f"❌ Failed to load dataset for module `{module_name}`: {e}")
+        return None
 
 # ------------------------------
 # 📊 Bar Chart
@@ -28,16 +49,17 @@ def plot_bar(model_scores, key=None):
         st.markdown(get_model_description(selected_model))
     return selected_model
 
-
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-def plot_feature_importance(model, X_processed):
+def plot_feature_importance(model, X_processed, module="loan"):
     st.subheader("📌 Feature Importance (Model-Based)")
     try:
         if hasattr(model, "feature_importances_"):
+            module_df = load_dataset_for_module(module)
+            features = module_df.columns if module_df is not None else X_processed.columns
             importances = model.feature_importances_
-            features = X_processed.columns
+
             df = pd.DataFrame({"Feature": features, "Importance": importances})
             df = df.sort_values(by="Importance", ascending=False)
 
@@ -49,31 +71,24 @@ def plot_feature_importance(model, X_processed):
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
 
-
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-# ------------------------------
-# 🧪 Permutation Importance
-# ------------------------------
-def plot_permutation_importance(model_tuple, X):
+def plot_permutation_importance(model_tuple, X, module="loan"):
     st.subheader("🎯 Permutation Feature Importance")
 
     model, feature_columns = model_tuple
 
-    # ❗ Check if actual labels exist
     if 'actual' not in X.columns:
-        st.info("⚠️ Permutation importance requires an 'actual' column with true labels. Skipping.")
+        st.info("⚠️ Permutation importance requires an 'actual' column. Skipping.")
         return
 
     try:
+        module_df = load_dataset_for_module(module)
+        X_full = module_df[feature_columns] if module_df is not None else X[feature_columns]
         y_true = X['actual']
-        X_aligned = X[feature_columns]
 
-        result = permutation_importance(
-            model, X_aligned, y_true,
-            n_repeats=5, random_state=42
-        )
+        result = permutation_importance(model, X_full, y_true, n_repeats=5, random_state=42)
         importances = result.importances_mean
 
         fig, ax = plt.subplots(figsize=(10, 5))
@@ -81,10 +96,8 @@ def plot_permutation_importance(model_tuple, X):
         ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
-
     except Exception as e:
         st.warning(f"⚠️ Permutation importance failed: {e}")
-
 
 # ------------------------------
 # 🥧 Pie Chart
@@ -113,7 +126,6 @@ def plot_pie_chart(probability_score):
     ax.axis('equal')
     st.pyplot(fig)
 
-
 # ------------------------------
 # 📋 Confusion Matrix + Report
 # ------------------------------
@@ -134,7 +146,6 @@ def plot_confusion_report(y_true, y_pred):
     except Exception as e:
         st.error(f"❌ Failed to generate confusion report: {e}")
 
-
 # ------------------------------
 # 📦 Box Plot
 # ------------------------------
@@ -148,7 +159,6 @@ def plot_boxplot(df):
         st.pyplot(fig)
     else:
         st.info("📭 No valid numeric features available for boxplot.")
-
 
 # ------------------------------
 # 🕸 Radar Chart
@@ -173,42 +183,33 @@ def plot_radar(model_scores):
     ax.set_ylim(0, 1)
     st.pyplot(fig)
 
-
 # ------------------------------
 # 🌡️ Correlation Heatmap
 # ------------------------------
-def plot_correlation_heatmap(df):
+def plot_correlation_heatmap(df, module="loan"):
     st.subheader("🌡️ Correlation Heatmap")
+    module_df = load_dataset_for_module(module)
 
-    # Drop model output columns like *_score
+    df = module_df if module_df is not None else df
     input_features = df.loc[:, ~df.columns.str.endswith('_score')]
 
     if input_features.shape[1] > 1:
         corr = input_features.corr()
-
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.heatmap(
-            corr,
-            annot=True,
-            cmap='coolwarm',
-            vmin=-1, vmax=1,  # Force full color range
-            center=0,
-            fmt=".2f",
-            linewidths=0.5,
-            linecolor='gray'
+            corr, annot=True, cmap='coolwarm',
+            vmin=-1, vmax=1, center=0,
+            fmt=".2f", linewidths=0.5, linecolor='gray'
         )
         st.pyplot(fig)
     else:
         st.warning("Not enough numeric features for correlation heatmap.")
-
-
 
 # ------------------------------
 # ⬇️ Download Report
 # ------------------------------
 def download_model_report(df, filename="fraud_report.csv"):
     st.download_button("⬇️ Download Model Report CSV", data=df.to_csv(index=False).encode(), file_name=filename, mime="text/csv")
-
 
 # ------------------------------
 # 🧾 Model Descriptions
