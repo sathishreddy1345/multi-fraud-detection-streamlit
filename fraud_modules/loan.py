@@ -1,7 +1,10 @@
+# fraud_modules/loan.py
+
 import pickle
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+import os
 
 # -----------------------------
 # 🔃 Load all loan models
@@ -19,7 +22,15 @@ for name in model_names:
     except Exception as e:
         print(f"❌ Failed loading loan_{name}: {e}")
 
-print("✅ Loaded models:", list(models.keys()))
+# -----------------------------
+# 📦 Load full dataset (for visualization fallback)
+# -----------------------------
+try:
+    full_data = pd.read_csv("data/loan_training_data.csv")
+    print("✅ Loaded fallback loan training dataset")
+except Exception as e:
+    print(f"❌ Could not load fallback training data: {e}")
+    full_data = None
 
 # -----------------------------
 # 🧠 Predict Function
@@ -44,7 +55,7 @@ def predict_loan_fraud(df):
     scores = {}
     scored_df = df.copy()
 
-    for key, model in models.items():
+    for key, (model, features) in models.items():
         try:
             if features:
                 missing = set(features) - set(df.columns)
@@ -79,13 +90,19 @@ def predict_loan_fraud(df):
         raise ValueError("❌ No models were able to predict.")
 
     final_score = np.mean(list(scores.values()))
+
+    # -----------------------------
+    # 🧪 Visualization Fallback Logic
+    # -----------------------------
+    if len(df) < 5 and full_data is not None:
+        print("🔁 Using full dataset for visualizations due to small input size")
+        return final_score, scores, full_data.select_dtypes(include=[np.number]).fillna(0)
+
     return final_score, scores, scored_df
+
 
 # -----------------------------
 # 📦 Export cleaned model dict
 # -----------------------------
-# Do not overwrite the main models dict
-# Instead expose a cleaned version separately for app visualizations
 models_plain = {k: v[0] for k, v in models.items()}
 globals()["models"] = models_plain
-
