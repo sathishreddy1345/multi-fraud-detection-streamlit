@@ -42,8 +42,11 @@ def predict_loan_fraud(df):
     df = df.copy()
 
     # Drop label if exists
+    # Extract true labels if present
     if "Class" in df.columns:
+        df["actual"] = df["Class"]
         df.drop(columns=["Class"], inplace=True)
+
 
     # Keep numeric only
     df = df.select_dtypes(include=[np.number])
