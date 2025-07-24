@@ -179,15 +179,17 @@ def plot_radar(model_scores):
 # ------------------------------
 def plot_correlation_heatmap(df):
     st.subheader("🌡️ Correlation Heatmap")
-    df = df.dropna(axis=1, how='all')
 
-    if df.shape[1] > 1:
-        corr = df.corr()
+    # Drop prediction score columns
+    input_features = df.loc[:, ~df.columns.str.endswith('_score')]
+
+    if input_features.shape[1] > 1:
+        corr = input_features.corr()
         fig, ax = plt.subplots()
-        sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
+        sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax, fmt=".2f")
         st.pyplot(fig)
     else:
-        st.warning("📭 Not enough non-NaN features to plot correlation matrix.")
+        st.warning("Not enough numeric features for correlation heatmap.")
 
 
 # ------------------------------
