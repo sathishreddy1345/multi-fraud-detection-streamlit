@@ -52,36 +52,30 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-def plot_feature_importance(model_obj, X_processed):
+def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
+
     try:
-        # Handle (model, features) tuple
-        if isinstance(model_obj, tuple):
-            model, feature_columns = model_obj
+        model, feature_columns = model_tuple
+
+        if hasattr(model, "feature_importances_") and feature_columns is not None:
+            # Filter only trained columns
+            X_features = X_processed[feature_columns]
+
+            importances = model.feature_importances_
+            if len(importances) != len(feature_columns):
+                raise ValueError("Mismatch between features and importances")
+
+            df = pd.DataFrame({
+                "Feature": feature_columns,
+                "Importance": importances
+            }).sort_values(by="Importance", ascending=False)
+
+            fig, ax = plt.subplots(figsize=(10, 5))
+            sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
+            st.pyplot(fig)
         else:
-            model = model_obj
-            feature_columns = list(X_processed.columns)
-
-        # Limit to aligned features only
-        X_input = X_processed[feature_columns] if feature_columns else X_processed
-
-        if not hasattr(model, "feature_importances_"):
             st.info("⚠️ Feature importance not available for this model.")
-            return
-
-        importances = model.feature_importances_
-
-        if len(importances) != len(X_input.columns):
-            raise ValueError("Mismatch between features and importances")
-
-        df = pd.DataFrame({
-            "Feature": X_input.columns,
-            "Importance": importances
-        }).sort_values(by="Importance", ascending=False)
-
-        fig, ax = plt.subplots(figsize=(10, 5))
-        sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
-        st.pyplot(fig)
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
 
@@ -90,30 +84,28 @@ def plot_feature_importance(model_obj, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_obj, X_processed, fallback_dataset_path=None):
+def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
     st.subheader("🎯 Permutation Feature Importance")
 
     try:
-        # Unpack model and features
-        if isinstance(model_obj, tuple):
-            model, feature_columns = model_obj
-        else:
-            model = model_obj
-            feature_columns = list(X_processed.columns)
+        model, feature_columns = model_tuple
 
-        # If 'actual' not in X, try loading from fallback
-        if 'actual' not in X_processed.columns and fallback_dataset_path:
-            X_processed = pd.read_csv(fallback_dataset_path)
-            if 'actual' not in X_processed.columns:
-                st.warning("⚠️ Permutation importance still missing 'actual' column.")
-                return
+        # Load original dataset with labels
+        data_path = f"data/{module_name}.csv"
+        df = pd.read_csv(data_path)
 
-        y_true = X_processed['actual']
-        X_input = X_processed[feature_columns] if feature_columns else X_processed.drop(columns=['actual'])
+        if 'actual' not in df.columns:
+            st.warning("⚠️ Permutation importance requires an 'actual' column.")
+            return
 
-        result = permutation_importance(model, X_input, y_true, n_repeats=5, random_state=42)
+        X = df[feature_columns]
+        y = df['actual']
+
+        result = permutation_importance(
+            model, X, y, n_repeats=5, random_state=42
+        )
+
         importances = result.importances_mean
-
         fig, ax = plt.subplots(figsize=(10, 5))
         sorted_idx = np.argsort(importances)
         ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
@@ -122,6 +114,7 @@ def plot_permutation_importance(model_obj, X_processed, fallback_dataset_path=No
 
     except Exception as e:
         st.warning(f"⚠️ Permutation importance failed: {e}")
+
 
 
 # ------------------------------
