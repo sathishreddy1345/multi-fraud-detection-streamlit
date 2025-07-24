@@ -157,9 +157,13 @@ if selected_tab in fraud_modules:
 
             all_models = fraud_modules[selected_tab].models
             default_model = all_models.get("rf") or list(all_models.values())[0]
+            all_models_full = fraud_modules[selected_tab].models_full
+            default_model_full = all_models_full.get("rf") or list(all_models_full.values())[0]
+
 
             if processed is not None and not processed.isnull().all().all():
-                plot_feature_importance(default_model, processed)
+                plot_feature_importance(default_model_full, processed)
+
                 plot_pie_chart(max(score, 0))
                 st.success(f"✅ Overall Fraud Likelihood: **{score * 100:.2f}%**")
 
@@ -187,6 +191,7 @@ if selected_tab in fraud_modules:
                 try:
                     model_object = all_models[selected_model]
                     y_true = df['actual'] if 'actual' in df.columns else None
-                    plot_permutation_importance(model_object, processed)
+                    plot_permutation_importance(default_model_full, processed)
+
                 except Exception as e:
                     st.warning(f"⚠️ Permutation importance failed: {e}")
