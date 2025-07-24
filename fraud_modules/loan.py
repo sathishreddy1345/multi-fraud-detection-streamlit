@@ -44,7 +44,7 @@ def predict_loan_fraud(df):
     scores = {}
     scored_df = df.copy()
 
-    for key, (model, features) in models.items():
+    for key, model in models.items():
         try:
             if features:
                 missing = set(features) - set(df.columns)
