@@ -42,10 +42,11 @@ def predict_loan_fraud(df):
     df = df.copy()
 
     # Drop label if exists
-    # Extract true labels if present
+    # Retain true labels as 'actual' for permutation
     if "Class" in df.columns:
         df["actual"] = df["Class"]
         df.drop(columns=["Class"], inplace=True)
+
 
 
     # Keep numeric only
@@ -101,10 +102,14 @@ def predict_loan_fraud(df):
     if "actual" in df.columns:
         scored_df["actual"] = df["actual"].values
 
+    # 🧪 Visualization Fallback Logic
     if len(df) < 5 and full_data is not None:
         print("🔁 Using full dataset for visualizations due to small input size")
-        return final_score, scores, full_data.select_dtypes(include=[np.number]).fillna(0)
-        # Add actual labels if available
+        fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
+        if "Class" in full_data.columns:
+            fallback_df["actual"] = full_data["Class"].values
+        return final_score, scores, fallback_df
+
     
     return final_score, scores, scored_df
 
