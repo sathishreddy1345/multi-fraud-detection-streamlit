@@ -106,9 +106,9 @@ def predict_loan_fraud(df):
     if len(df) < 5 and full_data is not None:
     print("🔁 Using full dataset for visualizations due to small input size")
     fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
-    if "Class" in full_data.columns:
-        fallback_df["actual"] = full_data["Class"].values
-    return final_score, scores, fallback_df
+        if "Class" in full_data.columns:
+            fallback_df["actual"] = full_data["Class"].values
+        return final_score, scores, fallback_df
 
 
     
