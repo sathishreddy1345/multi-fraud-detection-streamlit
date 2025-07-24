@@ -41,13 +41,10 @@ def predict_loan_fraud(df):
 
     df = df.copy()
 
-    # Drop label if exists
-    # Retain true labels as 'actual' for permutation
+    # Save label if exists, and drop it
     if "Class" in df.columns:
         df["actual"] = df["Class"]
         df.drop(columns=["Class"], inplace=True)
-
-
 
     # Keep numeric only
     df = df.select_dtypes(include=[np.number])
@@ -59,7 +56,7 @@ def predict_loan_fraud(df):
     scores = {}
     scored_df = df.copy()
 
-    for key, model in models.items():
+    for key, (model, features) in models.items():
         try:
             if features:
                 missing = set(features) - set(df.columns)
@@ -76,12 +73,11 @@ def predict_loan_fraud(df):
             if key == "iso":
                 raw = -model.decision_function(X_scaled)
                 row_scores = (raw - raw.min()) / (raw.max() - raw.min() + 1e-9)
-                scores[key] = row_scores.mean()
-                scored_df[f"{key}_score"] = row_scores
             else:
                 row_scores = model.predict_proba(X_scaled)[:, 1]
-                scores[key] = row_scores.mean()
-                scored_df[f"{key}_score"] = row_scores
+
+            scores[key] = row_scores.mean()
+            scored_df[f"{key}_score"] = row_scores
 
             print(f"✅ {key.upper()} model score: {scores[key]:.4f}")
 
@@ -94,6 +90,21 @@ def predict_loan_fraud(df):
         raise ValueError("❌ No models were able to predict.")
 
     final_score = np.mean(list(scores.values()))
+
+    # ✅ Add actual back if available
+    if "actual" in df.columns:
+        scored_df["actual"] = df["actual"].values
+
+    # ✅ Visualization Fallback
+    if len(df) < 5 and full_data is not None:
+        print("🔁 Using full dataset for visualizations due to small input size")
+        fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
+        if "Class" in full_data.columns:
+            fallback_df["actual"] = full_data["Class"].values
+        return final_score, scores, fallback_df
+
+    return final_score, scores, scored_df
+
 
     # -----------------------------
     # 🧪 Visualization Fallback Logic
