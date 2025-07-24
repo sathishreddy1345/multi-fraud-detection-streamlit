@@ -55,6 +55,14 @@ def plot_bar(model_scores, key=None):
 def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
+    # Inside plot_feature_importance
+    if isinstance(model_tuple, tuple):
+        model, feature_columns = model_tuple
+    else:
+        model = model_tuple
+        feature_columns = X_processed.columns.tolist()
+
+
     try:
         model, feature_columns = model_tuple
 
@@ -86,6 +94,14 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
     st.subheader("🎯 Permutation Feature Importance")
+
+    # Inside plot_feature_importance
+    if isinstance(model_tuple, tuple):
+        model, feature_columns = model_tuple
+    else:
+        model = model_tuple
+        feature_columns = X_processed.columns.tolist()
+
 
     try:
         model, feature_columns = model_tuple
