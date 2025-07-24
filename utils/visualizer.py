@@ -117,6 +117,10 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
         if 'actual' not in df.columns:
             st.warning("⚠️ Permutation importance requires a label column like 'Class' or 'Label'.")
             return
+        
+        if df['actual'].nunique() < 2:
+            st.warning("⚠️ Permutation importance needs both fraud and non-fraud cases.")
+            return
 
         # Ensure numeric + no NaNs
         df = df.select_dtypes(include=[np.number]).fillna(0)
