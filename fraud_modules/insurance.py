@@ -3,7 +3,6 @@
 import pickle
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 import os
 
 # -----------------------------
@@ -46,9 +45,7 @@ def predict_insurance_fraud(df):
         df["actual"] = df["fraud_reported"]
         df.drop(columns=["fraud_reported"], inplace=True)
 
-    # Keep only numeric
-    df = df.select_dtypes(include=[np.number])
-    df.fillna(0, inplace=True)
+    df.fillna(0, inplace=True)  # Keep all features as-is
 
     print("📊 Input columns:", df.columns.tolist())
     print("📊 Input shape:", df.shape)
@@ -66,8 +63,8 @@ def predict_insurance_fraud(df):
             else:
                 X_input = df
 
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X_input)
+            # No manual scaling here — model pipeline handles everything
+            X_scaled = X_input
 
             if key == "iso":
                 raw = -model.decision_function(X_scaled)
