@@ -49,12 +49,13 @@ def predict_insurance_fraud(df):
 
     print("📊 Input columns:", df.columns.tolist())
     for key, (_, features) in models.items():
-    print(f"🔍 Checking model '{key}' required features...")
-    missing = set(features) - set(df.columns)
-    if missing:
-        print(f"❌ Model {key} missing columns: {missing}")
-    else:
-        print(f"✅ Model {key} received all required columns.")
+        print(f"🔍 Checking model '{key}' required features...")
+        missing = set(features) - set(df.columns)
+        if missing:
+            print(f"❌ Model {key} missing columns: {missing}")
+        else:
+            print(f"✅ Model {key} received all required columns.")
+
 
     print("📊 Input shape:", df.shape)
 
