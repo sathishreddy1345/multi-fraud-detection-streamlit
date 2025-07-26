@@ -11,15 +11,29 @@ import os
 model_names = ["rf", "xgb", "cat", "lr", "iso"]
 models = {}
 
+default_features = [
+    'months_as_customer', 'age', 'policy_state', 'policy_deductible',
+    'policy_annual_premium', 'umbrella_limit', 'auto_make',
+    'auto_year', 'total_claim_amount', 'vehicle_claim'
+]
+
 for name in model_names:
     try:
         with open(f"models/insurance_{name}.pkl", "rb") as f:
             obj = pickle.load(f)
-            model = obj[0] if isinstance(obj, tuple) else obj
-            features = obj[1] if isinstance(obj, tuple) else None
+
+            # 🛠 Handle both (model, features) or just model
+            if isinstance(obj, tuple):
+                model, features = obj
+            else:
+                model = obj
+                features = default_features  # fallback
+
             models[name] = (model, features)
+
     except Exception as e:
         print(f"❌ Failed loading insurance_{name}: {e}")
+
 
 # -----------------------------
 # 📦 Load fallback dataset
