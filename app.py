@@ -123,9 +123,10 @@ if selected_tab in fraud_modules:
 
     if uploaded:
         df = pd.read_csv(uploaded)
-        st.dataframe(df.head(), height=250)
+        edited_df = st.data_editor(df.head(50), use_container_width=True, num_rows="dynamic", key="editor_input")
 
         if st.button("🔍 Run AI Fraud Detection"):
+            df = edited_df
             with st.spinner("Analyzing... please wait ⏳"):
                 time.sleep(1)
                 fn = function_map[selected_tab]
