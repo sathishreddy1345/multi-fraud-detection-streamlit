@@ -1,17 +1,12 @@
-# fraud_modules/insurance.py
-
 import pickle
 import numpy as np
 import pandas as pd
 import os
+from xgboost import XGBClassifier
 
 # -----------------------------
 # 🔃 Load all insurance models
 # -----------------------------
-import os
-import pickle
-from xgboost import XGBClassifier
-
 model_names = ["rf", "xgb", "cat", "lr", "iso"]
 models = {}
 
@@ -32,13 +27,12 @@ for name in model_names:
                 model, features = obj
             else:
                 model = obj
-                features = default_features  # Fallback feature list
+                features = default_features  # fallback
 
             models[name] = (model, features)
 
     except Exception as e:
         print(f"❌ Failed to load model {name}: {e}")
-
 
 # -----------------------------
 # 📦 Load fallback dataset
@@ -64,10 +58,17 @@ def predict_insurance_fraud(df):
         df["actual"] = df["fraud_reported"]
         df.drop(columns=["fraud_reported"], inplace=True)
 
-    df.fillna(0, inplace=True)  # Keep all features as-is
+    df.fillna(0, inplace=True)
 
     print("📊 Input columns:", df.columns.tolist())
-    for key, (_, features) in models.items():
+
+    for key, value in models.items():
+        if isinstance(value, tuple) and len(value) == 2:
+            model, features = value
+        else:
+            model = value
+            features = default_features
+
         print(f"🔍 Checking model '{key}' required features...")
         missing = set(features) - set(df.columns)
         if missing:
@@ -75,24 +76,24 @@ def predict_insurance_fraud(df):
         else:
             print(f"✅ Model {key} received all required columns.")
 
-
     print("📊 Input shape:", df.shape)
 
     scores = {}
     scored_df = df.copy()
 
-    for key, (model, features) in models.items():
-        try:
-            if features:
-                missing = set(features) - set(df.columns)
-                if missing:
-                    raise ValueError(f"Missing features for model {key}: {missing}")
-                X_input = df[features]
-            else:
-                X_input = df
+    for key, value in models.items():
+        if isinstance(value, tuple) and len(value) == 2:
+            model, features = value
+        else:
+            model = value
+            features = default_features
 
-            # No manual scaling here — model pipeline handles everything
-            X_scaled = X_input
+        try:
+            missing = set(features) - set(df.columns)
+            if missing:
+                raise ValueError(f"Missing features for model {key}: {missing}")
+            X_input = df[features]
+            X_scaled = X_input  # assuming model handles scaling internally
 
             if key == "iso":
                 raw = -model.decision_function(X_scaled)
@@ -134,7 +135,7 @@ def predict_insurance_fraud(df):
 # -----------------------------
 # 📦 Export cleaned model dict
 # -----------------------------
-models_plain = {k: v[0] for k, v in models.items()}
+models_plain = {k: v[0] if isinstance(v, tuple) else v for k, v in models.items()}
 models_full = models
 globals()["models"] = models_plain
 globals()["models_full"] = models_full
