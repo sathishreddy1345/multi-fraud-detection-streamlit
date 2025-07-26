@@ -9,6 +9,7 @@ import os
 # -----------------------------
 # 🔃 Load all insurance models
 # -----------------------------
+# Load all models for insurance fraud
 model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
 models = {}
 
@@ -20,12 +21,13 @@ for name in model_names:
             if isinstance(obj, tuple) and len(obj) == 2:
                 model, features = obj
             else:
-                model = obj
-                features = None  # fallback
+                model, features = obj, None
 
             models[name] = (model, features)
+
     except Exception as e:
-        print(f"❌ Failed loading insurance_{name}: {e}")
+        print(f"❌ Failed to load model insurance_{name}: {e}")
+
 
 
 # -----------------------------
