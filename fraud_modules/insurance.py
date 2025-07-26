@@ -9,7 +9,7 @@ import os
 # -----------------------------
 # 🔃 Load all insurance models
 # -----------------------------
-model_names = [ "xgb", "lgbm", "cat", "lr", "iso"]
+model_names = ["xgb", "lgbm", "cat", "lr", "iso"]
 models = {}
 
 for name in model_names:
@@ -41,7 +41,7 @@ def predict_insurance_fraud(df):
 
     df = df.copy()
 
-    # Rename Class -> actual
+    # ✅ Handle label column
     if "Class" in df.columns:
         df["actual"] = df["Class"]
         df.drop(columns=["Class"], inplace=True)
@@ -49,26 +49,29 @@ def predict_insurance_fraud(df):
         df["actual"] = df["fraud_reported"]
         df.drop(columns=["fraud_reported"], inplace=True)
 
-    df = df.select_dtypes(include=[np.number])
-    df.fillna(0, inplace=True)
+    # ✅ Keep only numeric features
+    df = df.select_dtypes(include=[np.number]).fillna(0)
 
     scores = {}
     scored_df = df.copy()
 
     for key, (model, features) in models.items():
         try:
+            # Validate features
             if features:
                 missing = set(features) - set(df.columns)
                 if missing:
-                    raise ValueError(f"Missing features for model {key}: {missing}")
+                    print(f"⚠️ Skipping {key} - missing features: {missing}")
+                    continue
                 X_input = df[features]
             else:
                 X_input = df
 
-            # Scale features
+            # Scale input
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X_input)
 
+            # Predict scores
             if key == "iso":
                 raw = -model.decision_function(X_scaled)
                 row_scores = (raw - raw.min()) / (raw.max() - raw.min() + 1e-9)
@@ -79,8 +82,9 @@ def predict_insurance_fraud(df):
             scored_df[f"{key}_score"] = row_scores
 
             print(f"✅ {key.upper()} score: {scores[key]:.4f}")
+
         except Exception as e:
-            print(f"❌ Model {key} failed: {e}")
+            print(f"❌ {key.upper()} model failed: {e}")
             import traceback
             traceback.print_exc()
 
@@ -89,13 +93,13 @@ def predict_insurance_fraud(df):
 
     final_score = np.mean(list(scores.values()))
 
-    # Assign label column for permutation plots
+    # Attach actual label column if present
     if "actual" in df.columns:
-        scored_df["actual"] = df["actual"]
+        scored_df["actual"] = df["actual"].values
 
-    # 🔁 Use full dataset for visualization fallback
+    # 🔁 Use full dataset for visualizations if input is too small
     if len(df) < 5 and full_data is not None:
-        print("🔁 Using fallback insurance data for visualizations.")
+        print("🔁 Using fallback dataset for visualizations")
         fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
         if "fraud_reported" in full_data.columns:
             fallback_df["actual"] = full_data["fraud_reported"].values
@@ -103,11 +107,11 @@ def predict_insurance_fraud(df):
 
     return final_score, scores, scored_df
 
-
 # -----------------------------
-# 📦 Export plain and full models
+# 🌐 Expose Models for Visualization
 # -----------------------------
 models_plain = {k: v[0] for k, v in models.items()}
 models_full = models
+
 globals()["models"] = models_plain
 globals()["models_full"] = models_full
