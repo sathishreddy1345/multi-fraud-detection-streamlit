@@ -9,7 +9,7 @@ import os
 # -----------------------------
 # 🔃 Load all loan models
 # -----------------------------
-model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
+model_names = ["rf", "xgb", "cat", "lr", "iso"]
 models = {}
 
 for name in model_names:
