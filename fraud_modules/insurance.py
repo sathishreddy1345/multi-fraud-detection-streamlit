@@ -8,6 +8,10 @@ import os
 # -----------------------------
 # 🔃 Load all insurance models
 # -----------------------------
+import os
+import pickle
+from xgboost import XGBClassifier
+
 model_names = ["rf", "xgb", "cat", "lr", "iso"]
 models = {}
 
@@ -18,21 +22,23 @@ default_features = [
 ]
 
 for name in model_names:
+    path = f"models/insurance_{name}.pkl"
     try:
-        with open(f"models/insurance_{name}.pkl", "rb") as f:
+        with open(path, "rb") as f:
             obj = pickle.load(f)
 
-            # Correct logic: check if model was saved as (model, features) or just model
+            # 👇 FIX: ensure tuple structure is respected
             if isinstance(obj, tuple) and len(obj) == 2 and isinstance(obj[1], list):
                 model, features = obj
             else:
                 model = obj
-                features = default_features
+                features = default_features  # Fallback feature list
 
             models[name] = (model, features)
 
     except Exception as e:
-        print(f"❌ Failed loading insurance_{name}: {e}")
+        print(f"❌ Failed to load model {name}: {e}")
+
 
 # -----------------------------
 # 📦 Load fallback dataset
