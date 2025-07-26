@@ -9,18 +9,24 @@ import os
 # -----------------------------
 # 🔃 Load all insurance models
 # -----------------------------
-model_names = ["xgb", "lgbm", "cat", "lr", "iso"]
+model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
 models = {}
 
 for name in model_names:
     try:
         with open(f"models/insurance_{name}.pkl", "rb") as f:
             obj = pickle.load(f)
-            model = obj[0] if isinstance(obj, tuple) else obj
-            features = obj[1] if isinstance(obj, tuple) else None
+
+            if isinstance(obj, tuple) and len(obj) == 2:
+                model, features = obj
+            else:
+                model = obj
+                features = None  # fallback
+
             models[name] = (model, features)
     except Exception as e:
         print(f"❌ Failed loading insurance_{name}: {e}")
+
 
 # -----------------------------
 # 📦 Load fallback dataset
