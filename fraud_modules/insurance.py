@@ -22,7 +22,8 @@ for name in model_names:
         with open(f"models/insurance_{name}.pkl", "rb") as f:
             obj = pickle.load(f)
 
-            if isinstance(obj, tuple) and len(obj) == 2:
+            # Correct logic: check if model was saved as (model, features) or just model
+            if isinstance(obj, tuple) and len(obj) == 2 and isinstance(obj[1], list):
                 model, features = obj
             else:
                 model = obj
@@ -32,7 +33,6 @@ for name in model_names:
 
     except Exception as e:
         print(f"❌ Failed loading insurance_{name}: {e}")
-
 
 # -----------------------------
 # 📦 Load fallback dataset
