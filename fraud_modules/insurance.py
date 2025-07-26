@@ -1,30 +1,113 @@
+# fraud_modules/insurance.py
+
 import pickle
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+import os
 
+# -----------------------------
+# 🔃 Load all insurance models
+# -----------------------------
 model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
 models = {}
+
 for name in model_names:
-    with open(f"models/insurance_{name}.pkl", "rb") as f:
-        models[name] = pickle.load(f)
+    try:
+        with open(f"models/insurance_{name}.pkl", "rb") as f:
+            obj = pickle.load(f)
+            model = obj[0] if isinstance(obj, tuple) else obj
+            features = obj[1] if isinstance(obj, tuple) else None
+            models[name] = (model, features)
+    except Exception as e:
+        print(f"❌ Failed loading insurance_{name}: {e}")
 
-scaler = StandardScaler()
+# -----------------------------
+# 📦 Load fallback dataset
+# -----------------------------
+try:
+    full_data = pd.read_csv("data/insurance.csv")
+    print("✅ Loaded fallback insurance dataset")
+except Exception as e:
+    print(f"❌ Could not load fallback insurance dataset: {e}")
+    full_data = None
 
+# -----------------------------
+# 🧠 Prediction Function
+# -----------------------------
 def predict_insurance_fraud(df):
-    global models
-    X = df.copy()
-    X = X.select_dtypes(include="number").fillna(0)
-    X_scaled = scaler.fit_transform(X)
+    if df.empty or df.isnull().all().all():
+        raise ValueError("Input dataframe is empty or contains only NaNs.")
 
-    predictions = {}
-    for key, model in models.items():
-        if key == "iso":
-            preds = model.predict(X_scaled)
-            scores = np.where(preds == -1, 1, 0)
-        else:
-            scores = model.predict_proba(X_scaled)[:, 1]
-        predictions[key] = np.mean(scores)
+    df = df.copy()
 
-    avg_score = np.mean(list(predictions.values()))
-    return avg_score, predictions, pd.DataFrame(X_scaled, columns=X.columns)
+    # Rename Class -> actual
+    if "Class" in df.columns:
+        df["actual"] = df["Class"]
+        df.drop(columns=["Class"], inplace=True)
+    elif "fraud_reported" in df.columns:
+        df["actual"] = df["fraud_reported"]
+        df.drop(columns=["fraud_reported"], inplace=True)
+
+    df = df.select_dtypes(include=[np.number])
+    df.fillna(0, inplace=True)
+
+    scores = {}
+    scored_df = df.copy()
+
+    for key, (model, features) in models.items():
+        try:
+            if features:
+                missing = set(features) - set(df.columns)
+                if missing:
+                    raise ValueError(f"Missing features for model {key}: {missing}")
+                X_input = df[features]
+            else:
+                X_input = df
+
+            # Scale features
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X_input)
+
+            if key == "iso":
+                raw = -model.decision_function(X_scaled)
+                row_scores = (raw - raw.min()) / (raw.max() - raw.min() + 1e-9)
+            else:
+                row_scores = model.predict_proba(X_scaled)[:, 1]
+
+            scores[key] = row_scores.mean()
+            scored_df[f"{key}_score"] = row_scores
+
+            print(f"✅ {key.upper()} score: {scores[key]:.4f}")
+        except Exception as e:
+            print(f"❌ Model {key} failed: {e}")
+            import traceback
+            traceback.print_exc()
+
+    if not scores:
+        raise ValueError("❌ No models succeeded in prediction.")
+
+    final_score = np.mean(list(scores.values()))
+
+    # Assign label column for permutation plots
+    if "actual" in df.columns:
+        scored_df["actual"] = df["actual"]
+
+    # 🔁 Use full dataset for visualization fallback
+    if len(df) < 5 and full_data is not None:
+        print("🔁 Using fallback insurance data for visualizations.")
+        fallback_df = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
+        if "fraud_reported" in full_data.columns:
+            fallback_df["actual"] = full_data["fraud_reported"].values
+        return final_score, scores, fallback_df
+
+    return final_score, scores, scored_df
+
+
+# -----------------------------
+# 📦 Export plain and full models
+# -----------------------------
+models_plain = {k: v[0] for k, v in models.items()}
+models_full = models
+globals()["models"] = models_plain
+globals()["models_full"] = models_full
