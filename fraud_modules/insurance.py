@@ -22,12 +22,11 @@ for name in model_names:
         with open(f"models/insurance_{name}.pkl", "rb") as f:
             obj = pickle.load(f)
 
-            # 🛠 Handle both (model, features) or just model
-            if isinstance(obj, tuple):
+            if isinstance(obj, tuple) and len(obj) == 2:
                 model, features = obj
             else:
                 model = obj
-                features = default_features  # fallback
+                features = default_features
 
             models[name] = (model, features)
 
