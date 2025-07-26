@@ -9,7 +9,7 @@ import os
 # -----------------------------
 # 🔃 Load all insurance models
 # -----------------------------
-model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
+model_names = [ "xgb", "lgbm", "cat", "lr", "iso"]
 models = {}
 
 for name in model_names:
