@@ -52,28 +52,10 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-import streamlit as st
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# Map of original dataset features (used for simplification)
-original_features_map = {
-    "insurance": [
-        'months_as_customer', 'age', 'policy_state', 'policy_deductible',
-        'policy_annual_premium', 'umbrella_limit', 'auto_make',
-        'auto_year', 'total_claim_amount', 'vehicle_claim'
-    ],
-    "loan": ['income', 'loan_amount', 'credit_score', 'term', 'employment_years', 'age'],
-    "credit_card": ['time', 'amount'] + [f"V{i}" for i in range(1, 29)],
-    "paysim": ['step', 'amount', 'oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest']
-}
-
-def plot_feature_importance(model_tuple, X_processed, module_name="loan"):
+def plot_feature_importance(model_tuple, X_processed, module_name="insurance"):
     st.subheader("📌 Feature Importance (Model-Based)")
 
-    # Unpack model and trained feature names
+    # Unpack model and feature names
     if isinstance(model_tuple, tuple):
         model, trained_features = model_tuple
     else:
@@ -81,14 +63,14 @@ def plot_feature_importance(model_tuple, X_processed, module_name="loan"):
         trained_features = X_processed.columns.tolist()
 
     try:
-        # Extract model from pipeline if needed
+        # Get internal estimator if in pipeline
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Get feature importances
+        # Get importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "get_feature_importance"):
@@ -100,34 +82,23 @@ def plot_feature_importance(model_tuple, X_processed, module_name="loan"):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Validate lengths
         if len(importances) != len(trained_features):
             raise ValueError(
                 f"Feature mismatch: model expects {len(importances)} features but found {len(trained_features)}."
             )
 
-        # Try mapping trained features back to original dataset features
-        simplified_features = []
-        original_cols = original_features_map.get(module_name.lower(), [])
-
-        for col in trained_features:
-            matched = next((orig for orig in original_cols if orig.lower() in col.lower()), None)
-            simplified_features.append(matched if matched else col)
-
-        # Aggregate importance if multiple encoded columns map to one original feature
+        # Build DataFrame and plot
         df = pd.DataFrame({
-            "Feature": simplified_features,
+            "Feature": trained_features,
             "Importance": importances
-        }).groupby("Feature", as_index=False).sum().sort_values(by="Importance", ascending=False)
+        }).sort_values(by="Importance", ascending=False)
 
-        # Plot top N features
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
-
 
 
 
