@@ -63,16 +63,20 @@ def plot_feature_importance(model_tuple, X_processed):
         feature_columns = X_processed.columns.tolist()
 
     try:
-        # Get inner estimator if using a pipeline
+        # Get inner estimator from pipeline if needed
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Safely select matching columns
-        available_features = [f for f in feature_columns if f in X_processed.columns]
-        X_features = X_processed[available_features]
+        # Ensure all required features exist in X_processed
+        for col in feature_columns:
+            if col not in X_processed.columns:
+                X_processed[col] = 0  # pad missing features with 0
+
+        # Align feature order
+        X_features = X_processed[feature_columns]
 
         # Retrieve importance scores
         if hasattr(model, "feature_importances_"):
@@ -86,15 +90,15 @@ def plot_feature_importance(model_tuple, X_processed):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Check length consistency
-        if len(importances) != len(available_features):
+        # Check for length mismatch
+        if len(importances) != len(feature_columns):
             raise ValueError(
-                f"Feature mismatch: model expects {len(importances)} features but found {len(available_features)} in input."
+                f"Feature mismatch: model expects {len(importances)} features but found {len(feature_columns)}."
             )
 
         # Plot
         df = pd.DataFrame({
-            "Feature": available_features,
+            "Feature": feature_columns,
             "Importance": importances
         }).sort_values(by="Importance", ascending=False)
 
@@ -104,6 +108,7 @@ def plot_feature_importance(model_tuple, X_processed):
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
+
 
 
 # ------------------------------
