@@ -15,13 +15,22 @@ models_full = {}
 
 for name in model_names:
     try:
-        path = f"models/credit_card_{name}.pkl"
-        model = joblib.load(path)
-        feature_names = model.named_steps["pre"].get_feature_names_out()
-        models[name] = model
-        models_full[name] = (model, feature_names)
+        path = f"models/creditcard_model_{name}.pkl"
+        model_obj = joblib.load(path)
+
+        if isinstance(model_obj, tuple):
+            model, features = model_obj
+        else:
+            model = model_obj
+            try:
+                features = model.named_steps["pre"].get_feature_names_out()
+            except:
+                features = None
+
+        models_full[name] = (model, features)
     except Exception as e:
         print(f"❌ Error loading {name}: {e}")
+
 
 # -----------------------------
 # 📦 Load fallback dataset
@@ -101,5 +110,9 @@ def predict_creditcard_fraud(df):
 # -----------------------------
 # 🌐 Export
 # -----------------------------
-globals()["models"] = models
+# -----------------------------
+# 🌐 Expose models
+# -----------------------------
+models_plain = {k: v[0] for k, v in models_full.items()}
+globals()["models"] = models_plain
 globals()["models_full"] = models_full
