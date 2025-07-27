@@ -22,14 +22,14 @@ def load_dataset_for_module(module_name):
         if not path:
             st.warning(f"⚠️ No dataset file mapped for: {module_name}")
             return None
-        st.write("🧪 Column types:", df.dtypes)
 
         df = pd.read_csv(path)
-        df = df.apply(pd.to_numeric, errors='ignore')  # Convert numeric-looking strings
+        # 🔄 Convert columns that look numeric to numeric
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='ignore')
+
         df = df.fillna(0)
         return df
-
-
     except Exception as e:
         st.error(f"❌ Failed to load dataset for module `{module_name}`: {e}")
         return None
@@ -323,6 +323,7 @@ def plot_correlation_heatmap(df, module=None):
 
     # Select only numeric features and drop constant ones
     input_features = df.select_dtypes(include=[np.number])
+
     
     if 'isFraud' in input_features.columns:
         input_features = input_features.drop(columns=['isFraud'])  # optional
