@@ -111,16 +111,19 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_tuple=None, module="loan"):
+import streamlit as st
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.inspection import permutation_importance
+from sklearn.preprocessing import LabelEncoder
+import matplotlib.pyplot as plt
+
+def plot_permutation_importance(data_or_module="insurance"):
     st.subheader("🎯 Permutation Feature Importance (Dataset-Based)")
 
-    # If user passed only `module` as DataFrame, reset module name
-    if isinstance(model_tuple, pd.DataFrame):
-        module_df = model_tuple
-        module = "insurance"  # default fallback
-    else:
-        module_df = None
-
+    # Map known modules to paths
     dataset_paths = {
         "loan": "data/loan.csv",
         "insurance": "data/insurance.csv",
@@ -128,41 +131,45 @@ def plot_permutation_importance(model_tuple=None, module="loan"):
         "paysim": "data/paysim.csv"
     }
 
-    try:
-        # Load dataset
-        path = dataset_paths.get(module.lower(), None)
-        if module_df is not None:
-            df = module_df
-        elif path:
-            df = pd.read_csv(path)
-        else:
-            st.error(f"❌ Invalid module: {module}")
+    # Determine if input is a module string or a DataFrame
+    if isinstance(data_or_module, str):
+        module_name = data_or_module.lower()
+        path = dataset_paths.get(module_name)
+        if not path:
+            st.error(f"❌ Unknown module name: {module_name}")
             return
+        df = pd.read_csv(path)
+    elif isinstance(data_or_module, pd.DataFrame):
+        df = data_or_module.copy()
+    else:
+        st.error("❌ Input must be a module name or a DataFrame.")
+        return
 
-        # Find target column
-        target_col = next(
-            (col for col in df.columns if col.lower() in ['class', 'label', 'fraud', 'fraud_reported', 'target', 'actual']),
-            None
-        )
+    try:
+        # Auto-detect label column
+        target_col = next((col for col in df.columns if col.lower() in [
+            'class', 'label', 'fraud', 'fraud_reported', 'target', 'actual'
+        ]), None)
+
         if not target_col:
-            st.error("❌ No valid target column found.")
+            st.warning("⚠️ No label column found for permutation importance.")
             return
 
         y = df[target_col]
         X = df.drop(columns=[target_col])
 
-        # Encode strings
+        # Encode categorical variables
         for col in X.select_dtypes(include='object').columns:
             X[col] = LabelEncoder().fit_transform(X[col].astype(str))
+
         if y.dtype == 'object':
             y = LabelEncoder().fit_transform(y.astype(str))
 
-        # Train simple model
+        # Train a simple model
         X_train, _, y_train, _ = train_test_split(X, y, test_size=0.3, random_state=42)
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
 
-        # Permutation importance
         result = permutation_importance(model, X_train, y_train, n_repeats=5, random_state=42)
         importances = result.importances_mean
         sorted_idx = np.argsort(importances)
