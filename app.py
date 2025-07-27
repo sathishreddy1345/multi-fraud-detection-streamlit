@@ -79,7 +79,7 @@ if st.sidebar.button("🔁 Reset App"):
 # Fraud Module Mapping
 # --------------------------
 fraud_modules = {
-    "💳 Credit Card": credit_card,
+    "💳 Credit Card": creditcard,
     "📱 PaySim": paysim,
     "🏦 Loan": loan,
     "🚗 Insurance": insurance
