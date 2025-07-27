@@ -111,7 +111,7 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(module_name="loan"):
+def plot_permutation_importance(module_name="loan", top_n=15):
     import streamlit as st
     import pandas as pd
     import numpy as np
@@ -121,64 +121,61 @@ def plot_permutation_importance(module_name="loan"):
     from sklearn.preprocessing import LabelEncoder, StandardScaler
     from sklearn.inspection import permutation_importance
 
-    st.subheader("🎯 Permutation Feature Importance (Dataset-Driven)")
+    st.subheader("🎯 Permutation Feature Importance (Dataset-Based)")
 
     try:
         # Load dataset
         path = f"data/{module_name}.csv"
         df = pd.read_csv(path)
 
-        # Convert target label to binary if needed
+        # Convert common label formats
         if 'fraud_reported' in df.columns:
             df['actual'] = df['fraud_reported'].map({'Y': 1, 'N': 0})
         else:
             for col in df.columns:
-                if col.lower() in ['class', 'target', 'label', 'fraud']:
+                if col.lower() in ['class', 'label', 'target', 'fraud']:
                     df['actual'] = df[col]
                     break
 
         if 'actual' not in df.columns:
-            st.warning("⚠️ No valid label column found.")
+            st.warning("⚠️ No valid target column found.")
             return
 
-        # Drop rows with missing labels
-        df = df[df['actual'].notna()]
-
-        # Encode categorical columns
+        # Encode categorical features
         df = df.copy()
         for col in df.select_dtypes(include='object').columns:
-            df[col] = LabelEncoder().fit_transform(df[col])
+            df[col] = LabelEncoder().fit_transform(df[col].astype(str))
 
-        # Drop non-numeric leftovers
         df = df.select_dtypes(include=[np.number]).fillna(0)
-
-        # Features/Labels
-        if 'actual' not in df.columns:
-            st.warning("⚠️ Could not identify target column.")
-            return
 
         X = df.drop(columns=['actual'])
         y = df['actual']
 
-        # Basic model for permutation
+        if y.nunique() < 2:
+            st.warning("⚠️ Label column must contain at least two classes.")
+            return
+
+        # Train temporary model
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X, y)
 
-        # Scale for stability
+        # Scale features
         X_scaled = StandardScaler().fit_transform(X)
 
+        # Permutation Importance
         result = permutation_importance(model, X_scaled, y, n_repeats=5, random_state=42)
         importances = result.importances_mean
 
-        # Plot
+        # Plot top N
         fig, ax = plt.subplots(figsize=(10, 5))
-        sorted_idx = np.argsort(importances)
+        sorted_idx = np.argsort(importances)[-top_n:]
         ax.barh(X.columns[sorted_idx], importances[sorted_idx])
-        ax.set_title(f"Permutation Importance ({module_name.title()} Dataset)")
+        ax.set_title(f"Top {top_n} Permutation Importances – {module_name.title()}")
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Permutation importance failed: {e}")
+
 
 
 # ------------------------------
