@@ -24,15 +24,16 @@ def load_dataset_for_module(module_name):
             return None
 
         df = pd.read_csv(path)
-        # 🔄 Convert columns that look numeric to numeric
-        for col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='ignore')
 
+        # 🔧 Convert everything to numeric (coerce errors to NaN)
+        df = df.apply(pd.to_numeric, errors='coerce')
         df = df.fillna(0)
+
         return df
     except Exception as e:
         st.error(f"❌ Failed to load dataset for module `{module_name}`: {e}")
         return None
+
 
 # ------------------------------
 # 📊 Bar Chart
