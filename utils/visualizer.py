@@ -315,30 +315,43 @@ def detect_module_from_df(df):
 def plot_correlation_heatmap(df, module=None):
     st.subheader("🌡️ Correlation Heatmap")
 
-    # Auto-fix: if no usable columns, fallback to raw data
-    if df is None or df.empty or df.isnull().all().all() or len(df.columns) < 2:
+    if df is None or df.empty or df.isnull().all().all():
         module = module or detect_module_from_df(df)
         df = load_dataset_for_module(module)
-        if df is None or df.empty:
+        if df is None:
             st.warning("⚠️ Could not load a valid dataset.")
             return
 
+    # Forcefully clean strings with commas or symbols (₹)
+    for col in df.columns:
+        df[col] = pd.to_numeric(
+            df[col].astype(str).str.replace(",", "").str.replace("₹", ""), errors="coerce"
+        )
+
     input_features = df.select_dtypes(include=[np.number])
-    if 'isFraud' in input_features.columns:
-        input_features = input_features.drop(columns=['isFraud'])
+
+    # Drop target column if present
+    for target_like in ['isfraud', 'class', 'target', 'actual', 'label']:
+        if target_like in input_features.columns.str.lower():
+            input_features = input_features.drop(columns=[target_like], errors='ignore')
 
     input_features = input_features.loc[:, input_features.nunique() > 1]
+
+    st.write("🧪 Final input features for correlation:", input_features.columns.tolist())
+    st.write("📊 Dtypes:", input_features.dtypes)
 
     if input_features.shape[1] < 2:
         st.warning("⚠️ Not enough numeric features for correlation heatmap.")
         return
 
-    st.write("✅ Columns used for correlation:", input_features.columns.tolist())
-
-    # Plot
+    # ✅ Plot heatmap
     corr = input_features.corr()
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.heatmap(corr, annot=True, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt=".2f", linewidths=0.5)
+    sns.heatmap(
+        corr, annot=True, cmap='coolwarm',
+        vmin=-1, vmax=1, center=0,
+        fmt=".2f", linewidths=0.5, linecolor='gray'
+    )
     ax.set_title("Correlation Heatmap of Numeric Features")
     st.pyplot(fig)
 
