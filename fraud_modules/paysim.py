@@ -1,30 +1,77 @@
-import pickle
+# paysim.py
+
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+import joblib
 
-model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
+# Load models and pipelines
+model_names = ["rf", "xgb", "cat", "lr", "iso"]
 models = {}
+models_full = {}
+
 for name in model_names:
-    with open(f"models/paysim_{name}.pkl", "rb") as f:
-        models[name] = pickle.load(f)
+    model_path = f"models/paysim_model_{name}.pkl"
+    try:
+        pipeline = joblib.load(model_path)
+        models[name] = pipeline.named_steps["clf"]
+        models_full[name] = pipeline
+    except Exception as e:
+        print(f"❌ Failed to load {name}: {e}")
 
-scaler = StandardScaler()
+def predict_paysim_fraud(df: pd.DataFrame):
+    global models_full
+    df = df.copy()
 
-def predict_paysim_fraud(df):
-    global models
-    X = df.copy()
-    X = X.select_dtypes(include="number").fillna(0)
-    X_scaled = scaler.fit_transform(X)
+    # Basic preprocessing: drop leakage columns if uploaded raw
+    df.drop(columns=[col for col in df.columns if col.lower() in ["nameorig", "namedest", "isflaggedfraud"]], inplace=True, errors="ignore")
 
+    # Save target column if it exists
+    if "isFraud" in df.columns:
+        df = df.rename(columns={"isFraud": "actual"})
+    if "actual" in df.columns:
+        actual = df["actual"]
+        df = df.drop("actual", axis=1)
+    else:
+        actual = None
+
+    # Ensure numerical + categorical columns are properly handled
+    df = df.select_dtypes(include=[np.number, "object"]).copy()
+    df.fillna(0, inplace=True)
+
+    # Use Random Forest model for main scoring
+    default_model = models_full.get("rf") or list(models_full.values())[0]
+    X_processed = default_model.named_steps["pre"].transform(df)
+
+    # Prepare predictions
     predictions = {}
-    for key, model in models.items():
-        if key == "iso":
-            preds = model.predict(X_scaled)
-            scores = np.where(preds == -1, 1, 0)
-        else:
-            scores = model.predict_proba(X_scaled)[:, 1]
-        predictions[key] = np.mean(scores)
+    for name, pipeline in models_full.items():
+        model = pipeline.named_steps["clf"]
+        try:
+            X_transformed = pipeline.named_steps["pre"].transform(df)
+
+            if name == "iso":
+                preds = model.predict(X_transformed)
+                scores = np.where(preds == -1, 1, 0)
+                predictions[name] = np.mean(scores)
+            else:
+                scores = model.predict_proba(X_transformed)[:, 1]
+                predictions[name] = np.mean(scores)
+        except Exception as e:
+            predictions[name] = 0
+            print(f"⚠️ Prediction failed for model {name}: {e}")
 
     avg_score = np.mean(list(predictions.values()))
-    return avg_score, predictions, pd.DataFrame(X_scaled, columns=X.columns)
+
+    # Return processed dataframe with correct feature names
+    feature_names = default_model.named_steps["pre"].get_feature_names_out()
+    processed_df = pd.DataFrame(X_processed, columns=feature_names)
+
+    if actual is not None:
+        processed_df["actual"] = actual.values
+
+    return avg_score, predictions, processed_df
+
+
+# For app integration
+models = models
+models_full = models_full
