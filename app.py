@@ -122,7 +122,8 @@ if selected_tab in fraud_modules:
     uploaded = st.file_uploader("📤 Upload a CSV file for analysis", type="csv")
 
     if uploaded:
-        df = pd.read_csv(uploaded)
+        df = pd.read_csv(uploaded, thousands=",")
+
         edited_df = st.data_editor(df.head(50), use_container_width=True, num_rows="dynamic", key="editor_input")
 
         if st.button("🔍 Run AI Fraud Detection"):
