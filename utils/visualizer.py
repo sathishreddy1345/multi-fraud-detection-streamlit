@@ -55,35 +55,41 @@ def plot_bar(model_scores, key=None):
 def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
-    # Inside plot_feature_importance
+    # Unpack model and features
     if isinstance(model_tuple, tuple):
         model, feature_columns = model_tuple
     else:
         model = model_tuple
         feature_columns = X_processed.columns.tolist()
 
-
     try:
-        model, feature_columns = model_tuple
+        # Filter trained columns only
+        X_features = X_processed[feature_columns]
 
-        if hasattr(model, "feature_importances_") and feature_columns is not None:
-            # Filter only trained columns
-            X_features = X_processed[feature_columns]
-
+        # Choose correct importance attribute
+        if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
-            if len(importances) != len(feature_columns):
-                raise ValueError("Mismatch between features and importances")
-
-            df = pd.DataFrame({
-                "Feature": feature_columns,
-                "Importance": importances
-            }).sort_values(by="Importance", ascending=False)
-
-            fig, ax = plt.subplots(figsize=(10, 5))
-            sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
-            st.pyplot(fig)
+        elif hasattr(model, "coef_"):
+            coef = model.coef_
+            importances = np.abs(coef[0]) if coef.ndim > 1 else np.abs(coef)
         else:
             st.info("⚠️ Feature importance not available for this model.")
+            return
+
+        # Validate shape
+        if len(importances) != len(feature_columns):
+            raise ValueError(f"Mismatch: {len(importances)} importances vs {len(feature_columns)} features")
+
+        # Plot
+        df = pd.DataFrame({
+            "Feature": feature_columns,
+            "Importance": importances
+        }).sort_values(by="Importance", ascending=False)
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
+        st.pyplot(fig)
+
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
 
