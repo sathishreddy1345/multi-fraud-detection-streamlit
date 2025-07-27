@@ -58,39 +58,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# ------------------------------
-# Original columns by module
-# ------------------------------
+# Map of original dataset features (used for simplification)
 original_features_map = {
     "insurance": [
         'months_as_customer', 'age', 'policy_state', 'policy_deductible',
         'policy_annual_premium', 'umbrella_limit', 'auto_make',
         'auto_year', 'total_claim_amount', 'vehicle_claim'
     ],
-    "loan": [
-        'income', 'loan_amount', 'credit_score', 'term',
-        'employment_years', 'age'
-    ],
-    "credit_card": [
-        'time', 'amount', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',
-        'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14',
-        'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21',
-        'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28'
-    ],
-    "paysim": [
-        'step', 'amount', 'oldbalanceOrg', 'newbalanceOrig',
-        'oldbalanceDest', 'newbalanceDest', 'type', 'nameOrig',
-        'nameDest'
-    ]
+    "loan": ['income', 'loan_amount', 'credit_score', 'term', 'employment_years', 'age'],
+    "credit_card": ['time', 'amount'] + [f"V{i}" for i in range(1, 29)],
+    "paysim": ['step', 'amount', 'oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest']
 }
 
-# ------------------------------
-# Plot Feature Importance
-# ------------------------------
 def plot_feature_importance(model_tuple, X_processed, module_name="loan"):
     st.subheader("📌 Feature Importance (Model-Based)")
 
-    # Unpack model + trained features
+    # Unpack model and trained feature names
     if isinstance(model_tuple, tuple):
         model, trained_features = model_tuple
     else:
@@ -98,14 +81,14 @@ def plot_feature_importance(model_tuple, X_processed, module_name="loan"):
         trained_features = X_processed.columns.tolist()
 
     try:
-        # If it's a pipeline, get the last step that has importances
+        # Extract model from pipeline if needed
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Get raw importance
+        # Get feature importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "get_feature_importance"):
@@ -114,33 +97,37 @@ def plot_feature_importance(model_tuple, X_processed, module_name="loan"):
             coef = model.coef_
             importances = np.abs(coef[0]) if coef.ndim > 1 else np.abs(coef)
         else:
-            st.warning("⚠️ Feature importance not available for this model.")
+            st.info("⚠️ Feature importance not available for this model.")
             return
 
+        # Validate lengths
         if len(importances) != len(trained_features):
             raise ValueError(
                 f"Feature mismatch: model expects {len(importances)} features but found {len(trained_features)}."
             )
 
-        # 🔁 Map trained features to original ones
+        # Try mapping trained features back to original dataset features
+        simplified_features = []
         original_cols = original_features_map.get(module_name.lower(), [])
-        simplified_names = []
-        for f in trained_features:
-            matched = next((orig for orig in original_cols if orig in f), None)
-            simplified_names.append(matched if matched else f)
 
+        for col in trained_features:
+            matched = next((orig for orig in original_cols if orig.lower() in col.lower()), None)
+            simplified_features.append(matched if matched else col)
+
+        # Aggregate importance if multiple encoded columns map to one original feature
         df = pd.DataFrame({
-            "Feature": simplified_names,
+            "Feature": simplified_features,
             "Importance": importances
         }).groupby("Feature", as_index=False).sum().sort_values(by="Importance", ascending=False)
 
-        # 📊 Plot
+        # Plot top N features
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
+
 
 
 
