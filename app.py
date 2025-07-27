@@ -210,7 +210,7 @@ if selected_tab in fraud_modules:
                     model_object = all_models[selected_model]
                     y_true = df['actual'] if 'actual' in df.columns else None
                     module_key_map = {
-                        "💳 Credit Card": "credit_card",
+                        "💳 Credit Card": "creditcard",
                         "📱 PaySim": "paysim",
                         "🏦 Loan": "loan",
                         "🚗 Insurance": "insurance"
