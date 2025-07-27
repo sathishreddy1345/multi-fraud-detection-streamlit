@@ -243,12 +243,40 @@ def plot_radar(model_scores):
 # ------------------------------
 # 🌡️ Correlation Heatmap
 # ------------------------------
-def plot_correlation_heatmap(df, module):
-    st.subheader("🌡️ Correlation Heatmap")
-    module_df = load_dataset_for_module(module)
 
-    df = module_df if module_df is not None else df
+def detect_module_from_df(df):
+    module_features = {
+        "loan": {"income", "loan_amount", "credit_score", "employment_years"},
+        "insurance": {"policy_annual_premium", "umbrella_limit", "auto_make"},
+        "credit_card": {"V1", "V2", "V3", "Amount", "Time"},
+        "paysim": {"type", "oldbalanceOrg", "newbalanceOrig", "isFraud"},
+    }
+
+    df_cols = set(df.columns.str.lower())
+    best_match = None
+    max_overlap = 0
+
+    for module, features in module_features.items():
+        overlap = len(df_cols & set(f.lower() for f in features))
+        if overlap > max_overlap:
+            max_overlap = overlap
+            best_match = module
+
+    return best_match or "loan"  # fallback
+
+def plot_correlation_heatmap(df, module=None):
+    st.subheader("🌡️ Correlation Heatmap")
+
+    if module is None:
+        module = detect_module_from_df(df)
+
+    # Fallback if df is invalid
+    if df is None or df.empty or df.isnull().all().all():
+        module_df = load_dataset_for_module(module)
+        df = module_df if module_df is not None else df
+
     input_features = df.loc[:, ~df.columns.str.endswith('_score')]
+    input_features = input_features.select_dtypes(include=[np.number])
 
     if input_features.shape[1] > 1:
         corr = input_features.corr()
@@ -260,7 +288,8 @@ def plot_correlation_heatmap(df, module):
         )
         st.pyplot(fig)
     else:
-        st.warning("Not enough numeric features for correlation heatmap.")
+        st.warning("⚠️ Not enough numeric features for correlation heatmap.")
+
 
 # ------------------------------
 # ⬇️ Download Report
