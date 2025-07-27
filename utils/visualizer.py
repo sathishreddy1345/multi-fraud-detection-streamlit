@@ -52,7 +52,13 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-def plot_feature_importance(model_tuple, X_processed, module_name="insurance"):
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
     # Unpack model and feature names
@@ -63,14 +69,14 @@ def plot_feature_importance(model_tuple, X_processed, module_name="insurance"):
         trained_features = X_processed.columns.tolist()
 
     try:
-        # Get internal estimator if in pipeline
+        # Get inner model if using pipeline
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Get importances
+        # Get feature importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "get_feature_importance"):
@@ -82,12 +88,13 @@ def plot_feature_importance(model_tuple, X_processed, module_name="insurance"):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
+        # Final length check
         if len(importances) != len(trained_features):
             raise ValueError(
-                f"Feature mismatch: model expects {len(importances)} features but found {len(trained_features)}."
+                f"Feature mismatch: model expects {len(importances)} features but got {len(trained_features)} names."
             )
 
-        # Build DataFrame and plot
+        # Create DataFrame and plot
         df = pd.DataFrame({
             "Feature": trained_features,
             "Importance": importances
@@ -99,7 +106,6 @@ def plot_feature_importance(model_tuple, X_processed, module_name="insurance"):
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
-
 
 
 # ------------------------------
