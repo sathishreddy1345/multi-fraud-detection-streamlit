@@ -56,22 +56,25 @@ def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # Step 1: Unpack model and optional trained features
+        # Step 1: Unpack model
         if isinstance(model_tuple, tuple):
-            model, trained_features = model_tuple
+            model, _ = model_tuple
         else:
             model = model_tuple
-            trained_features = None
 
         feature_names = None
 
-        # Step 2: If pipeline, get preprocessor and actual model
+        # Step 2: If pipeline, extract from preprocessor
         if hasattr(model, "named_steps"):
             steps = model.named_steps
-            preprocessor = steps.get("preprocessor")  # or change to your actual name
-            if preprocessor and hasattr(preprocessor, "get_feature_names_out"):
-                feature_names = preprocessor.get_feature_names_out()
-            # Get the last step that has feature_importances_ or coef_
+
+            # Try to extract preprocessor feature names
+            for name, step in steps.items():
+                if hasattr(step, "get_feature_names_out"):
+                    feature_names = step.get_feature_names_out()
+                    break  # use first match
+
+            # Get actual model inside pipeline
             for step in reversed(steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
@@ -84,18 +87,14 @@ def plot_feature_importance(model_tuple, X_processed):
             coef = model.coef_
             importances = np.abs(coef[0]) if coef.ndim > 1 else np.abs(coef)
         else:
-            st.warning("⚠️ This model does not provide feature importance.")
+            st.warning("⚠️ This model does not support feature importance.")
             return
 
         # Step 4: Fallback feature names
-        if feature_names is None:
+        if feature_names is None or len(feature_names) != len(importances):
             feature_names = [f"Feature {i}" for i in range(len(importances))]
 
-        # Step 5: Validate lengths
-        if len(importances) != len(feature_names):
-            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but got {len(feature_names)} names.")
-
-        # Step 6: Plot
+        # Step 5: Plot
         df = pd.DataFrame({
             "Feature": feature_names,
             "Importance": importances
@@ -103,6 +102,7 @@ def plot_feature_importance(model_tuple, X_processed):
 
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
+        ax.set_title("Top Feature Importances")
         st.pyplot(fig)
 
     except Exception as e:
