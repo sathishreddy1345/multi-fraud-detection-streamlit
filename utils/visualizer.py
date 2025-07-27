@@ -117,13 +117,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
-from sklearn.inspection import permutation_importance
 from sklearn.model_selection import train_test_split
+from sklearn.inspection import permutation_importance
 
-def plot_permutation_importance(module="loan"):
-    st.subheader("🎯 Permutation Feature Importance (Simple)")
+def plot_permutation_importance(model_tuple=None, module="loan"):
+    st.subheader("🎯 Permutation Feature Importance (Dataset-Based)")
 
-    # Map modules to files
+    # Map each module to its dataset
     dataset_paths = {
         "loan": "data/loan.csv",
         "insurance": "data/insurance.csv",
@@ -142,44 +142,41 @@ def plot_permutation_importance(module="loan"):
         st.error(f"❌ Failed to load dataset: {e}")
         return
 
-    # Identify target column
-    target_col = next((col for col in df.columns if col.lower() in ['class', 'label', 'fraud', 'fraud_reported', 'target']), None)
+    # Try to find a target column
+    target_col = next((col for col in df.columns if col.lower() in ['class', 'label', 'fraud', 'fraud_reported', 'target', 'actual']), None)
     if not target_col:
         st.error("❌ No valid target column found.")
         return
 
-    # Clean and encode
+    # Separate features and target
     y = df[target_col]
     X = df.drop(columns=[target_col])
 
-    # Encode categorical columns
+    # Encode string labels
     for col in X.select_dtypes(include='object').columns:
         X[col] = LabelEncoder().fit_transform(X[col].astype(str))
 
     if y.dtype == 'object':
         y = LabelEncoder().fit_transform(y.astype(str))
 
-    # Train/test split
+    # Fit a simple model
     try:
         X_train, _, y_train, _ = train_test_split(X, y, test_size=0.3, random_state=42)
-
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
 
         result = permutation_importance(model, X_train, y_train, n_repeats=5, random_state=42)
         importances = result.importances_mean
-
-        # Plot
         sorted_idx = np.argsort(importances)
-        top_features = X.columns[sorted_idx]
 
         fig, ax = plt.subplots(figsize=(10, 6))
-        ax.barh(top_features, importances[sorted_idx])
+        ax.barh(X.columns[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Permutation importance failed: {e}")
+
 
 # ------------------------------
 # 🥧 Pie Chart
