@@ -313,6 +313,9 @@ def detect_module_from_df(df):
 
 def plot_correlation_heatmap(df, module=None):
     st.subheader("🌡️ Correlation Heatmap")
+    st.write("🧪 Final input features for correlation:", input_features.columns.tolist())
+    st.write("📊 Dtypes:", input_features.dtypes)
+
 
     if df is None or df.empty or df.isnull().all().all():
         module = module or detect_module_from_df(df)
