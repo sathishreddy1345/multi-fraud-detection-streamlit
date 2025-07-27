@@ -62,49 +62,50 @@ def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insuran
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # 🔹 Load raw dataset to get original feature names
+        # Load raw dataset (for original column grouping)
         raw_df = pd.read_csv(dataset_path)
-        raw_features = [
+        original_features = [
             col for col in raw_df.columns
             if col.lower() not in ["fraud_reported", "class", "label", "target"]
         ]
 
-        # 🔹 Unpack model
+        # Extract model
         model = model_tuple[0] if isinstance(model_tuple, tuple) else model_tuple
 
-        # 🔹 Unwrap from pipeline if needed
+        # Unwrap pipeline if needed
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        feature_names = X_processed.columns.tolist()
+        # Get encoded feature names
+        encoded_features = X_processed.columns.tolist()
 
-        # 🔹 Get feature importance values
+        # Get importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "coef_"):
             coef = model.coef_
             importances = np.abs(coef[0]) if coef.ndim > 1 else np.abs(coef)
         else:
-            st.info("⚠️ Feature importance not available for this model.")
+            st.warning("⚠️ Feature importance not available for this model.")
             return
 
-        if len(importances) != len(feature_names):
-            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but found {len(feature_names)} in input.")
+        # Validate length
+        if len(importances) != len(encoded_features):
+            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but found {len(encoded_features)} in input.")
 
-        # 🔹 Group encoded features back to original
-        grouped_importance = {}
-        for fname, score in zip(feature_names, importances):
-            # Match original feature if it's a prefix
-            match = next((orig for orig in raw_features if fname.startswith(orig)), fname)
-            grouped_importance[match] = grouped_importance.get(match, 0) + score
+        # Map encoded features back to original names
+        grouped = {}
+        for feat_name, score in zip(encoded_features, importances):
+            base = next((orig for orig in original_features if feat_name.startswith(orig)), feat_name)
+            grouped[base] = grouped.get(base, 0) + score
 
-        df = pd.DataFrame(list(grouped_importance.items()), columns=["Feature", "Importance"])
-        df = df.sort_values(by="Importance", ascending=False)
+        # Create DataFrame
+        df = pd.DataFrame(list(grouped.items()), columns=["Feature", "Importance"]).sort_values(by="Importance", ascending=False)
 
-        # 🔹 Plot top 10
+        # Plot
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.barplot(x="Importance", y="Feature", data=df.head(10), ax=ax)
         st.pyplot(fig)
