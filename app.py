@@ -123,6 +123,13 @@ if selected_tab in fraud_modules:
 
     if uploaded:
         df = pd.read_csv(uploaded, thousands=",")
+        # 🧼 Force numeric conversion for all columns
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col].astype(str).str.replace(",", "").str.replace("₹", ""), errors="coerce")
+        
+        # Drop any remaining non-numeric or fully empty columns
+        df = df.dropna(axis=1, how="all")
+
 
         edited_df = st.data_editor(df.head(50), use_container_width=True, num_rows="dynamic", key="editor_input")
 
