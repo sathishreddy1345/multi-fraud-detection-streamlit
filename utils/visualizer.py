@@ -52,31 +52,25 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-def plot_feature_importance(model_tuple, X_processed):
+def plot_feature_importance(model_tuple, _):
     st.subheader("📌 Feature Importance (Model-Based)")
 
-    # Unpack model and feature names
-    if isinstance(model_tuple, tuple):
-        model, trained_features = model_tuple
-    else:
-        model = model_tuple
-        trained_features = X_processed.columns.tolist()
-
     try:
-        # Get inner model if using pipeline
+        # Extract model and trained features
+        if isinstance(model_tuple, tuple):
+            model, trained_features = model_tuple
+        else:
+            model = model_tuple
+            trained_features = [f"Feature {i}" for i in range(len(getattr(model, 'feature_importances_', [])))]
+
+        # If model is in pipeline, get estimator with feature importances
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Get feature importances
+        # Get importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "get_feature_importance"):
@@ -88,13 +82,11 @@ def plot_feature_importance(model_tuple, X_processed):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Final length check
-        if len(importances) != len(trained_features):
-            raise ValueError(
-                f"Feature mismatch: model expects {len(importances)} features but got {len(trained_features)} names."
-            )
+        # Fallback feature names
+        if not trained_features or len(trained_features) != len(importances):
+            trained_features = [f"Feature {i}" for i in range(len(importances))]
 
-        # Create DataFrame and plot
+        # Plot
         df = pd.DataFrame({
             "Feature": trained_features,
             "Importance": importances
