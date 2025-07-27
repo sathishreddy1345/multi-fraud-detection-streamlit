@@ -343,7 +343,7 @@ def plot_correlation_heatmap(df=None, module=None):
             st.warning("⚠️ Not enough numeric features for correlation heatmap.")
             return
 
-        st.write("🧪 Final input features for correlation:", input_features.columns.tolist())
+        
 
         # ✅ Plot heatmap
         corr = input_features.corr()
