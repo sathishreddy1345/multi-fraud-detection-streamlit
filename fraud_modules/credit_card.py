@@ -33,7 +33,7 @@ for name in model_names:
 # 📦 Load fallback full dataset
 # -----------------------------
 try:
-    full_data = pd.read_csv("data/credit_card.csv")
+    full_data = pd.read_csv("data/creditcard.csv")
     print("✅ Loaded fallback dataset")
 except Exception as e:
     print(f"❌ Could not load fallback dataset: {e}")
