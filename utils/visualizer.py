@@ -56,23 +56,23 @@ def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
     if isinstance(model_tuple, tuple):
-        model = model_tuple[0]
+        model, original_features = model_tuple
     else:
         model = model_tuple
+        original_features = X_processed.columns.tolist()
 
     try:
-        # Try to extract real feature names from a pipeline
-        feature_names = None
-
+        # Extract underlying model if it's in a pipeline
         if hasattr(model, "named_steps"):
-            for step_name, step in model.named_steps.items():
-                if hasattr(step, "get_feature_names_out"):
-                    # Found transformer with feature names
-                    feature_names = step.get_feature_names_out()
+            for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
-                    model = step  # Use this as the final model
+                    model = step
+                    break
 
-        # Try getting importances
+        # Get expanded feature names from preprocessing if possible
+        expanded_feature_names = X_processed.columns.tolist()
+
+        # Get importance scores
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "coef_"):
@@ -82,23 +82,26 @@ def plot_feature_importance(model_tuple, X_processed):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # If no names, fallback to generic
-        if feature_names is None:
-            feature_names = [f"Feature_{i}" for i in range(len(importances))]
+        if len(importances) != len(expanded_feature_names):
+            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but found {len(expanded_feature_names)} in input.")
 
-        # Safety check
-        if len(importances) != len(feature_names):
-            raise ValueError(
-                f"Feature count mismatch: model has {len(importances)} importances but got {len(feature_names)} names"
-            )
+        # 🧠 Aggregate back to original features
+        importance_map = {}
+        for name, score in zip(expanded_feature_names, importances):
+            for orig_col in original_features:
+                if name.startswith(orig_col):  # catch 'auto_make_Toyota' etc.
+                    importance_map[orig_col] = importance_map.get(orig_col, 0) + score
+                    break
+            else:
+                # fallback if no match
+                importance_map[name] = importance_map.get(name, 0) + score
 
-        df = pd.DataFrame({
-            "Feature": feature_names,
-            "Importance": importances
-        }).sort_values(by="Importance", ascending=False)
+        # Plot aggregated importance
+        df = pd.DataFrame(list(importance_map.items()), columns=["Feature", "Importance"])
+        df = df.sort_values(by="Importance", ascending=False)
 
         fig, ax = plt.subplots(figsize=(10, 5))
-        sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
+        sns.barplot(x="Importance", y="Feature", data=df.head(10), ax=ax)
         st.pyplot(fig)
 
     except Exception as e:
