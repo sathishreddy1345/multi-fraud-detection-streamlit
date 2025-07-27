@@ -111,41 +111,26 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
+def plot_permutation_importance(model_tuple, X_processed, y_true=None):
     st.subheader("🎯 Permutation Feature Importance")
 
     try:
-        # Handle (model, features) or just model
+        # Handle (model, feature_columns) or just model
         if isinstance(model_tuple, tuple):
             model, _ = model_tuple
         else:
             model = model_tuple
 
-        # Load dataset for target column
-        df = pd.read_csv(f"data/{module_name}.csv")
-
-        # Extract 'actual' (target) column
-        if 'actual' not in df.columns:
-            for col in df.columns:
-                if col.lower() in ['class', 'label', 'target', 'fraud', 'fraud_reported']:
-                    df['actual'] = df[col].map({'Y': 1, 'N': 0}).fillna(df[col]).astype(int)
-                    break
-
-        if 'actual' not in df.columns:
-            st.warning("⚠️ Dataset must have a target column like 'Class' or 'fraud_reported'.")
+        # If target (y_true) not passed, warn and skip
+        if y_true is None or len(y_true) != len(X_processed):
+            st.warning("⚠️ Permutation importance requires a valid target array (`y_true`).")
             return
 
-        y = df['actual']
-
-        if y.nunique() < 2:
-            st.warning("⚠️ Target must have at least two classes for permutation importance.")
-            return
-
-        # Use column names from processed input (after one-hot encoding, etc.)
+        # Use feature names from the preprocessed data
         feature_names = X_processed.columns if hasattr(X_processed, "columns") else [f"Feature {i}" for i in range(X_processed.shape[1])]
 
         # Run permutation importance
-        result = permutation_importance(model, X_processed, y, n_repeats=5, random_state=42)
+        result = permutation_importance(model, X_processed, y_true, n_repeats=5, random_state=42)
 
         importances = result.importances_mean
         if importances.sum() == 0:
@@ -161,7 +146,6 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
 
     except Exception as e:
         st.error(f"❌ Permutation importance failed: {e}")
-
 
 # ------------------------------
 # 🥧 Pie Chart
