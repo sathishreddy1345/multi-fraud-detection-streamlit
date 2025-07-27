@@ -155,7 +155,7 @@ def plot_permutation_importance(module_or_df):
         # Try to find the target column
         target_col = None
         for col in df.columns:
-            if col.lower() in ["class", "label", "fraud", "fraud_reported", "target"]:
+            if col.lower() in ["class", "label", "isFraud", "fraud_reported", "target"]:
                 target_col = col
                 break
 
