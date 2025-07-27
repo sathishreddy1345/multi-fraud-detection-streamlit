@@ -52,7 +52,7 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insurance.csv"):
+def plot_feature_importance(model_tuple, dataset_path="data/insurance.csv"):
     import pandas as pd
     import numpy as np
     import seaborn as sns
@@ -62,25 +62,24 @@ def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insuran
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # Load raw dataset (for original column grouping)
-        raw_df = pd.read_csv(dataset_path)
-        original_features = [
-            col for col in raw_df.columns
+        # Load original dataset to get original feature names
+        df = pd.read_csv(dataset_path)
+        feature_columns = [
+            col for col in df.columns
             if col.lower() not in ["fraud_reported", "class", "label", "target"]
         ]
+        df = df[feature_columns]
+        df = df.select_dtypes(include=[np.number])  # keep only numeric
 
-        # Extract model
+        # Unpack model
         model = model_tuple[0] if isinstance(model_tuple, tuple) else model_tuple
 
-        # Unwrap pipeline if needed
+        # Get actual model from pipeline if needed
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
-
-        # Get encoded feature names
-        encoded_features = X_processed.columns.tolist()
 
         # Get importances
         if hasattr(model, "feature_importances_"):
@@ -93,21 +92,17 @@ def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insuran
             return
 
         # Validate length
-        if len(importances) != len(encoded_features):
-            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but found {len(encoded_features)} in input.")
-
-        # Map encoded features back to original names
-        grouped = {}
-        for feat_name, score in zip(encoded_features, importances):
-            base = next((orig for orig in original_features if feat_name.startswith(orig)), feat_name)
-            grouped[base] = grouped.get(base, 0) + score
-
-        # Create DataFrame
-        df = pd.DataFrame(list(grouped.items()), columns=["Feature", "Importance"]).sort_values(by="Importance", ascending=False)
+        if len(importances) != len(df.columns):
+            raise ValueError(f"Model expects {len(importances)} features, but dataset has {len(df.columns)} numeric columns.")
 
         # Plot
+        imp_df = pd.DataFrame({
+            "Feature": df.columns,
+            "Importance": importances
+        }).sort_values(by="Importance", ascending=False)
+
         fig, ax = plt.subplots(figsize=(10, 5))
-        sns.barplot(x="Importance", y="Feature", data=df.head(10), ax=ax)
+        sns.barplot(x="Importance", y="Feature", data=imp_df.head(10), ax=ax)
         st.pyplot(fig)
 
     except Exception as e:
