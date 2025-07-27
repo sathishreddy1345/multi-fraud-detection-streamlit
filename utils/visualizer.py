@@ -52,24 +52,27 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-def plot_feature_importance(model_tuple, X_scaled):
+def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
-    # Unpack model and placeholder features (optional)
     if isinstance(model_tuple, tuple):
         model = model_tuple[0]
     else:
         model = model_tuple
 
     try:
-        # If model is a pipeline, extract estimator with importance
-        if hasattr(model, "named_steps"):
-            for step in reversed(model.named_steps.values()):
-                if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
-                    model = step
-                    break
+        # Try to extract real feature names from a pipeline
+        feature_names = None
 
-        # Extract importances
+        if hasattr(model, "named_steps"):
+            for step_name, step in model.named_steps.items():
+                if hasattr(step, "get_feature_names_out"):
+                    # Found transformer with feature names
+                    feature_names = step.get_feature_names_out()
+                if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
+                    model = step  # Use this as the final model
+
+        # Try getting importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "coef_"):
@@ -79,11 +82,16 @@ def plot_feature_importance(model_tuple, X_scaled):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Fallback feature names
-        num_features = len(importances)
-        feature_names = [f"Feature_{i}" for i in range(num_features)]
+        # If no names, fallback to generic
+        if feature_names is None:
+            feature_names = [f"Feature_{i}" for i in range(len(importances))]
 
-        # Create plot
+        # Safety check
+        if len(importances) != len(feature_names):
+            raise ValueError(
+                f"Feature count mismatch: model has {len(importances)} importances but got {len(feature_names)} names"
+            )
+
         df = pd.DataFrame({
             "Feature": feature_names,
             "Importance": importances
