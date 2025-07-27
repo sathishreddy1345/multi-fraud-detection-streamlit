@@ -310,23 +310,29 @@ def detect_module_from_df(df):
 def plot_correlation_heatmap(df, module=None):
     st.subheader("🌡️ Correlation Heatmap")
 
-    if module is None:
-        module = detect_module_from_df(df)
-
     if df is None or df.empty or df.isnull().all().all():
+        module = module or detect_module_from_df(df)
         df = load_dataset_for_module(module)
         if df is None:
             st.warning("⚠️ Could not load a valid dataset.")
             return
 
-    input_features = df.select_dtypes(include=[np.number]).drop(columns=['isFraud'], errors='ignore')
+    # Select only numeric features and drop constant ones
+    input_features = df.select_dtypes(include=[np.number])
+    
+    if 'isFraud' in input_features.columns:
+        input_features = input_features.drop(columns=['isFraud'])  # optional
+
     input_features = input_features.loc[:, input_features.nunique() > 1]
+
+    # 🧪 DEBUG: Print available columns
+    st.write("✅ Numeric columns after filtering:", input_features.columns.tolist())
 
     if input_features.shape[1] < 2:
         st.warning("⚠️ Not enough numeric features for correlation heatmap.")
-        st.write("🔍 Available columns:", input_features.columns.tolist())
         return
 
+    # ✅ Plot heatmap
     corr = input_features.corr()
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.heatmap(
@@ -334,6 +340,7 @@ def plot_correlation_heatmap(df, module=None):
         vmin=-1, vmax=1, center=0,
         fmt=".2f", linewidths=0.5, linecolor='gray'
     )
+    ax.set_title("Correlation Heatmap of Numeric Features")
     st.pyplot(fig)
 
 
