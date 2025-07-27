@@ -63,13 +63,22 @@ def plot_feature_importance(model_tuple, X_processed):
         feature_columns = X_processed.columns.tolist()
 
     try:
-        # Safely filter only available columns
+        # Get inner estimator if using a pipeline
+        if hasattr(model, "named_steps"):
+            for step in reversed(model.named_steps.values()):
+                if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
+                    model = step
+                    break
+
+        # Safely select matching columns
         available_features = [f for f in feature_columns if f in X_processed.columns]
         X_features = X_processed[available_features]
 
-        # Get feature importances or coefficients
+        # Retrieve importance scores
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
+        elif hasattr(model, "get_feature_importance"):  # CatBoost
+            importances = model.get_feature_importance()
         elif hasattr(model, "coef_"):
             coef = model.coef_
             importances = np.abs(coef[0]) if coef.ndim > 1 else np.abs(coef)
@@ -77,12 +86,13 @@ def plot_feature_importance(model_tuple, X_processed):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Check if feature lengths match
+        # Check length consistency
         if len(importances) != len(available_features):
             raise ValueError(
-                f"Model expects {len(importances)} features, but {len(available_features)} were found in X_processed."
+                f"Feature mismatch: model expects {len(importances)} features but found {len(available_features)} in input."
             )
 
+        # Plot
         df = pd.DataFrame({
             "Feature": available_features,
             "Importance": importances
@@ -94,6 +104,7 @@ def plot_feature_importance(model_tuple, X_processed):
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
+
 
 # ------------------------------
 # 🧪 Permutation Importance
