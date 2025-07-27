@@ -52,39 +52,26 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-def plot_feature_importance(model_tuple, X_processed):
+def plot_feature_importance(model_tuple, X_scaled):
     st.subheader("📌 Feature Importance (Model-Based)")
 
+    # Unpack model and placeholder features (optional)
     if isinstance(model_tuple, tuple):
-        model, feature_columns = model_tuple
+        model = model_tuple[0]
     else:
         model = model_tuple
-        feature_columns = X_processed.columns.tolist()
 
     try:
-        # If model is a pipeline, extract last estimator with importances
+        # If model is a pipeline, extract estimator with importance
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Start from copy
-        X_temp = X_processed.copy()
-
-        # Ensure all expected features are present (fill missing with 0)
-        for col in feature_columns:
-            if col not in X_temp.columns:
-                X_temp[col] = 0
-
-        # Drop any extra columns
-        X_temp = X_temp[feature_columns]
-
-        # Extract feature importances
+        # Extract importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
-        elif hasattr(model, "get_feature_importance"):  # e.g., CatBoost
-            importances = model.get_feature_importance()
         elif hasattr(model, "coef_"):
             coef = model.coef_
             importances = np.abs(coef[0]) if coef.ndim > 1 else np.abs(coef)
@@ -92,15 +79,13 @@ def plot_feature_importance(model_tuple, X_processed):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Final sanity check
-        if len(importances) != len(feature_columns):
-            raise ValueError(
-                f"Feature mismatch: model expects {len(importances)} features but found {len(feature_columns)} after reconstruction."
-            )
+        # Fallback feature names
+        num_features = len(importances)
+        feature_names = [f"Feature_{i}" for i in range(num_features)]
 
-        # Plot
+        # Create plot
         df = pd.DataFrame({
-            "Feature": feature_columns,
+            "Feature": feature_names,
             "Importance": importances
         }).sort_values(by="Importance", ascending=False)
 
