@@ -52,53 +52,91 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-def plot_feature_importance(model_tuple, dataset_path="data/insurance.csv"):
-    import pandas as pd
-    import numpy as np
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    import streamlit as st
+import streamlit as st
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
+# ------------------------------
+# Original columns by module
+# ------------------------------
+original_features_map = {
+    "insurance": [
+        'months_as_customer', 'age', 'policy_state', 'policy_deductible',
+        'policy_annual_premium', 'umbrella_limit', 'auto_make',
+        'auto_year', 'total_claim_amount', 'vehicle_claim'
+    ],
+    "loan": [
+        'income', 'loan_amount', 'credit_score', 'term',
+        'employment_years', 'age'
+    ],
+    "credit_card": [
+        'time', 'amount', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',
+        'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14',
+        'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21',
+        'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28'
+    ],
+    "paysim": [
+        'step', 'amount', 'oldbalanceOrg', 'newbalanceOrig',
+        'oldbalanceDest', 'newbalanceDest', 'type', 'nameOrig',
+        'nameDest'
+    ]
+}
+
+# ------------------------------
+# Plot Feature Importance
+# ------------------------------
+def plot_feature_importance(model_tuple, X_processed, module_name="loan"):
     st.subheader("📌 Feature Importance (Model-Based)")
 
+    # Unpack model + trained features
+    if isinstance(model_tuple, tuple):
+        model, trained_features = model_tuple
+    else:
+        model = model_tuple
+        trained_features = X_processed.columns.tolist()
+
     try:
-        # 🔹 Load the dataset (only numeric columns)
-        df = pd.read_csv(dataset_path)
-        df = df.select_dtypes(include=[np.number]).copy()
-        feature_columns = df.columns.tolist()
-
-        # 🔹 Unpack model if tuple
-        model = model_tuple[0] if isinstance(model_tuple, tuple) else model_tuple
-
-        # 🔹 If pipeline, get the final estimator
+        # If it's a pipeline, get the last step that has importances
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # 🔹 Get importances
+        # Get raw importance
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
+        elif hasattr(model, "get_feature_importance"):
+            importances = model.get_feature_importance()
         elif hasattr(model, "coef_"):
             coef = model.coef_
             importances = np.abs(coef[0]) if coef.ndim > 1 else np.abs(coef)
         else:
-            st.warning("⚠️ This model doesn't support feature importances.")
+            st.warning("⚠️ Feature importance not available for this model.")
             return
 
-        # 🔹 Check for matching number of features
-        if len(importances) != len(feature_columns):
-            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but dataset has {len(feature_columns)}.")
+        if len(importances) != len(trained_features):
+            raise ValueError(
+                f"Feature mismatch: model expects {len(importances)} features but found {len(trained_features)}."
+            )
 
-        # 🔹 Plot
-        importance_df = pd.DataFrame({
-            "Feature": feature_columns,
+        # 🔁 Map trained features to original ones
+        original_cols = original_features_map.get(module_name.lower(), [])
+        simplified_names = []
+        for f in trained_features:
+            matched = next((orig for orig in original_cols if orig in f), None)
+            simplified_names.append(matched if matched else f)
+
+        df = pd.DataFrame({
+            "Feature": simplified_names,
             "Importance": importances
-        }).sort_values(by="Importance", ascending=False)
+        }).groupby("Feature", as_index=False).sum().sort_values(by="Importance", ascending=False)
 
+        # 📊 Plot
         fig, ax = plt.subplots(figsize=(10, 5))
-        sns.barplot(x="Importance", y="Feature", data=importance_df.head(10), ax=ax)
+        sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
         st.pyplot(fig)
 
     except Exception as e:
