@@ -62,17 +62,17 @@ def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insuran
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # 🔹 Load original dataset for clean feature names
+        # 🔹 Load raw dataset to get original feature names
         raw_df = pd.read_csv(dataset_path)
-        original_features = [
+        raw_features = [
             col for col in raw_df.columns
-            if col.lower() not in ['fraud_reported', 'class', 'label', 'target']
+            if col.lower() not in ["fraud_reported", "class", "label", "target"]
         ]
 
         # 🔹 Unpack model
         model = model_tuple[0] if isinstance(model_tuple, tuple) else model_tuple
 
-        # 🔹 Extract final estimator from pipeline (if any)
+        # 🔹 Unwrap from pipeline if needed
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
@@ -81,7 +81,7 @@ def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insuran
 
         feature_names = X_processed.columns.tolist()
 
-        # 🔹 Get importances
+        # 🔹 Get feature importance values
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "coef_"):
@@ -92,25 +92,19 @@ def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insuran
             return
 
         if len(importances) != len(feature_names):
-            raise ValueError(
-                f"Feature mismatch: model expects {len(importances)} features but found {len(feature_names)} in input."
-            )
+            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but found {len(feature_names)} in input.")
 
-        # 🔹 Aggregate importances to original feature names
-        importance_map = {}
+        # 🔹 Group encoded features back to original
+        grouped_importance = {}
         for fname, score in zip(feature_names, importances):
-            for orig in original_features:
-                if fname.startswith(orig):
-                    importance_map[orig] = importance_map.get(orig, 0) + score
-                    break
-            else:
-                # fallback for unmatched
-                importance_map[fname] = score
+            # Match original feature if it's a prefix
+            match = next((orig for orig in raw_features if fname.startswith(orig)), fname)
+            grouped_importance[match] = grouped_importance.get(match, 0) + score
 
-        df = pd.DataFrame(list(importance_map.items()), columns=["Feature", "Importance"])
+        df = pd.DataFrame(list(grouped_importance.items()), columns=["Feature", "Importance"])
         df = df.sort_values(by="Importance", ascending=False)
 
-        # 🔹 Plot
+        # 🔹 Plot top 10
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.barplot(x="Importance", y="Feature", data=df.head(10), ax=ax)
         st.pyplot(fig)
