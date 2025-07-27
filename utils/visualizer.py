@@ -111,7 +111,14 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_tuple, X_processed, y=None):
+def plot_permutation_importance(model_tuple, raw_df=None, module_name="insurance"):
+    import streamlit as st
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from sklearn.inspection import permutation_importance
+
     st.subheader("🎯 Permutation Feature Importance")
 
     try:
@@ -120,53 +127,83 @@ def plot_permutation_importance(model_tuple, X_processed, y=None):
             model, feature_columns = model_tuple
         else:
             model = model_tuple
-            feature_columns = X_processed.columns.tolist()
+            feature_columns = None
 
-        # Ensure y (target) is provided or fallback
-        if y is None:
-            # Attempt to load from dataset
-            df_path = "data/insurance.csv"  # 🔁 You can auto-map based on module if needed
-            df = pd.read_csv(df_path)
+        # Load raw dataset if not provided
+        if raw_df is None:
+            path = f"data/{module_name}.csv"
+            raw_df = pd.read_csv(path)
 
-            for col in ['fraud_reported', 'actual', 'Class', 'label', 'target']:
-                if col in df.columns:
-                    if col == 'fraud_reported':
-                        df['actual'] = df[col].apply(lambda x: 1 if str(x).strip().upper() == 'Y' else 0)
+        # Extract label
+        label_col = None
+        for col in raw_df.columns:
+            if col.lower() in ['class', 'label', 'target', 'fraud', 'fraud_reported']:
+                label_col = col
+                break
+
+        if label_col is None:
+            st.warning("⚠️ No label column found for permutation importance.")
+            return
+
+        # Convert fraud_reported to binary if needed
+        if label_col == 'fraud_reported':
+            raw_df['actual'] = raw_df[label_col].apply(lambda x: 1 if str(x).strip().upper() == 'Y' else 0)
+        else:
+            raw_df['actual'] = raw_df[label_col]
+
+        y = raw_df['actual']
+        X_raw = raw_df.drop(columns=[label_col, 'actual'])
+
+        if hasattr(model, "transform") or hasattr(model, "predict"):
+            # If model is a pipeline, transform using its preprocessing
+            try:
+                if hasattr(model, "named_steps"):
+                    # Try to get feature names after transform
+                    last_step = list(model.named_steps.values())[-1]
+                    if hasattr(last_step, "feature_importances_"):
+                        feature_names = model[:-1].transform(X_raw)
+                        if hasattr(feature_names, "toarray"):
+                            feature_names = feature_names.toarray()
+                        feature_columns = model[:-1].get_feature_names_out()
                     else:
-                        df['actual'] = df[col]
-                    break
-            else:
-                st.warning("⚠️ No valid target column found.")
+                        X_processed = model[:-1].transform(X_raw)
+                        feature_columns = model[:-1].get_feature_names_out()
+                else:
+                    X_processed = model.transform(X_raw)
+                    feature_columns = [f"Feature {i+1}" for i in range(X_processed.shape[1])]
+
+                # Handle sparse matrices
+                if hasattr(X_processed, "toarray"):
+                    X_processed = X_processed.toarray()
+
+            except Exception as e:
+                st.error(f"❌ Failed during model transformation: {e}")
                 return
+        else:
+            st.error("❌ Model is not a pipeline and has no preprocessing.")
+            return
 
-            y = df['actual']
-
+        # Check label
         if y.nunique() < 2:
             st.warning("⚠️ Need at least two classes for permutation importance.")
             return
 
-        # Run permutation importance on already processed X
-        from sklearn.inspection import permutation_importance
+        # Run permutation importance
         result = permutation_importance(
-            model, X_processed, y,
-            n_repeats=5, random_state=42, scoring='roc_auc'
+            model, X_processed, y, n_repeats=5,
+            random_state=42, scoring='roc_auc'
         )
 
         importances = result.importances_mean
-        if np.all(importances == 0):
-            st.warning("⚠️ All importances are zero. Model may be uninformative.")
-            return
-
         sorted_idx = np.argsort(importances)[-15:]
 
         fig, ax = plt.subplots(figsize=(10, 5))
-        ax.barh(np.array(X_processed.columns)[sorted_idx], importances[sorted_idx])
+        ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Permutation importance failed: {e}")
-
 
 
 # ------------------------------
