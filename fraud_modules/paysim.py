@@ -10,7 +10,7 @@ models = {}
 models_full = {}
 
 for name in model_names:
-    model_path = f"models/paysim_model_{name}.pkl"
+    model_path = f"models/paysim_{name}.pkl"
     try:
         pipeline = joblib.load(model_path)
         models[name] = pipeline.named_steps["clf"]
@@ -22,8 +22,7 @@ def predict_paysim_fraud(df: pd.DataFrame):
     global models_full
     df = df.copy()
 
-    # Basic preprocessing: drop leakage columns if uploaded raw
-    df.drop(columns=[col for col in df.columns if col.lower() in ["nameorig", "namedest", "isflaggedfraud"]], inplace=True, errors="ignore")
+    
 
     # Save target column if it exists
     if "isFraud" in df.columns:
