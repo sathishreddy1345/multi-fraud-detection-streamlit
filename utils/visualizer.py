@@ -56,44 +56,42 @@ def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # Step 1: Unpack model and feature names (if available)
+        # Step 1: Unpack model and optional trained features
         if isinstance(model_tuple, tuple):
             model, trained_features = model_tuple
         else:
             model = model_tuple
             trained_features = None
 
-        # Step 2: If model is a pipeline, extract the final estimator and feature names
         feature_names = None
+
+        # Step 2: If pipeline, get preprocessor and actual model
         if hasattr(model, "named_steps"):
             steps = model.named_steps
-            if "preprocessor" in steps:
-                preprocessor = steps["preprocessor"]
-                if hasattr(preprocessor, "get_feature_names_out"):
-                    feature_names = preprocessor.get_feature_names_out()
-            # Replace model with final estimator
+            preprocessor = steps.get("preprocessor")  # or change to your actual name
+            if preprocessor and hasattr(preprocessor, "get_feature_names_out"):
+                feature_names = preprocessor.get_feature_names_out()
+            # Get the last step that has feature_importances_ or coef_
             for step in reversed(steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Step 3: If no feature names found yet, use trained or fallback
-        if feature_names is None:
-            feature_names = trained_features or [f"Feature {i}" for i in range(len(getattr(model, "feature_importances_", [])))]
-
-        # Step 4: Get importances
+        # Step 3: Get importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
-        elif hasattr(model, "get_feature_importance"):
-            importances = model.get_feature_importance()
         elif hasattr(model, "coef_"):
             coef = model.coef_
             importances = np.abs(coef[0]) if coef.ndim > 1 else np.abs(coef)
         else:
-            st.info("⚠️ Feature importance not available for this model.")
+            st.warning("⚠️ This model does not provide feature importance.")
             return
 
-        # Step 5: Validate shape
+        # Step 4: Fallback feature names
+        if feature_names is None:
+            feature_names = [f"Feature {i}" for i in range(len(importances))]
+
+        # Step 5: Validate lengths
         if len(importances) != len(feature_names):
             raise ValueError(f"Feature mismatch: model expects {len(importances)} features but got {len(feature_names)} names.")
 
@@ -109,7 +107,6 @@ def plot_feature_importance(model_tuple, X_processed):
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
-
 
 # ------------------------------
 # 🧪 Permutation Importance
