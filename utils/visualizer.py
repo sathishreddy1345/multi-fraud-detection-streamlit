@@ -122,14 +122,13 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="insurance
             model = model_tuple
             feature_columns = X_processed.columns.tolist()
 
-        # Load true labels from the original dataset
+        # Load dataset and extract target
         df = pd.read_csv(f"data/{module_name}.csv")
 
-        # Extract binary target as 'actual'
         for col in ['actual', 'Class', 'fraud_reported', 'label', 'target']:
             if col in df.columns:
                 if col == 'fraud_reported':
-                    df['actual'] = df['fraud_reported'].apply(lambda x: 1 if str(x).upper() == 'Y' else 0)
+                    df['actual'] = df['fraud_reported'].apply(lambda x: 1 if str(x).strip().upper() == 'Y' else 0)
                 elif col != 'actual':
                     df['actual'] = df[col]
                 break
@@ -140,25 +139,23 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="insurance
 
         y = df['actual']
 
-        # Check class balance
         if y.nunique() < 2:
             st.warning("⚠️ Need at least two classes for permutation importance.")
             return
 
-        # Use only the features present in processed input
+        # Use only the encoded features present in input
         X = X_processed.copy()
 
-        # Scale (optional)
+        # Optional: Scale
         from sklearn.preprocessing import StandardScaler
         X_scaled = StandardScaler().fit_transform(X)
 
-        # Compute permutation importance
+        # Run permutation importance
         result = permutation_importance(model, X_scaled, y, n_repeats=5, random_state=42)
 
         importances = result.importances_mean
         sorted_idx = np.argsort(importances)
 
-        # Plot
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.barh(np.array(X.columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
