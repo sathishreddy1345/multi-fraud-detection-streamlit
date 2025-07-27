@@ -115,21 +115,22 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="insurance
     st.subheader("🎯 Permutation Feature Importance")
 
     try:
-        # Handle (model, features) tuple
+        # Handle (model, features)
         if isinstance(model_tuple, tuple):
             model, feature_columns = model_tuple
         else:
             model = model_tuple
             feature_columns = X_processed.columns.tolist()
 
-        # Load dataset and extract target
+        # Load dataset
         df = pd.read_csv(f"data/{module_name}.csv")
 
+        # Handle label
         for col in ['actual', 'Class', 'fraud_reported', 'label', 'target']:
             if col in df.columns:
                 if col == 'fraud_reported':
-                    df['actual'] = df['fraud_reported'].apply(lambda x: 1 if str(x).strip().upper() == 'Y' else 0)
-                elif col != 'actual':
+                    df['actual'] = df[col].apply(lambda x: 1 if str(x).strip().upper() == 'Y' else 0)
+                else:
                     df['actual'] = df[col]
                 break
 
@@ -138,31 +139,43 @@ def plot_permutation_importance(model_tuple, X_processed, module_name="insurance
             return
 
         y = df['actual']
-
         if y.nunique() < 2:
-            st.warning("⚠️ Need at least two classes for permutation importance.")
+            st.warning("⚠️ Need at least two classes.")
             return
 
-        # Use only the encoded features present in input
-        X = X_processed.copy()
+        # Select relevant features
+        X = df[feature_columns].copy()
 
-        # Optional: Scale
+        # 🔁 Encode non-numeric columns
+        X = pd.get_dummies(X, drop_first=True)
+
+        # Match processed input columns with the model
+        available_features = [f for f in X.columns if f in X_processed.columns]
+        if not available_features:
+            st.warning("⚠️ No usable numeric features after encoding.")
+            return
+
+        X = X[available_features]
+
+        # Scale
         from sklearn.preprocessing import StandardScaler
         X_scaled = StandardScaler().fit_transform(X)
 
-        # Run permutation importance
+        # Permutation Importance
+        from sklearn.inspection import permutation_importance
         result = permutation_importance(model, X_scaled, y, n_repeats=5, random_state=42)
 
         importances = result.importances_mean
-        sorted_idx = np.argsort(importances)
+        sorted_idx = np.argsort(importances)[-15:]  # top 15
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(10, 5))
         ax.barh(np.array(X.columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
     except Exception as e:
-        st.warning(f"⚠️ Permutation importance failed: {e}")
+        st.error(f"❌ Permutation importance failed: {e}")
+
 
 
 
