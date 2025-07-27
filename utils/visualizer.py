@@ -62,28 +62,26 @@ def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insuran
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # Load original dataset to get base feature names
-        original_df = pd.read_csv(dataset_path)
-        original_features = original_df.columns.tolist()
-        original_features = [col for col in original_features if col.lower() not in ['fraud_reported', 'class', 'label', 'target']]
+        # 🔹 Load original dataset for clean feature names
+        raw_df = pd.read_csv(dataset_path)
+        original_features = [
+            col for col in raw_df.columns
+            if col.lower() not in ['fraud_reported', 'class', 'label', 'target']
+        ]
 
-        # Unpack model and handle tuple
-        if isinstance(model_tuple, tuple):
-            model = model_tuple[0]
-        else:
-            model = model_tuple
+        # 🔹 Unpack model
+        model = model_tuple[0] if isinstance(model_tuple, tuple) else model_tuple
 
-        # If model is in pipeline, unwrap it
+        # 🔹 Extract final estimator from pipeline (if any)
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Get expanded feature names after encoding
-        expanded_feature_names = X_processed.columns.tolist()
+        feature_names = X_processed.columns.tolist()
 
-        # Get importances
+        # 🔹 Get importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "coef_"):
@@ -93,26 +91,26 @@ def plot_feature_importance(model_tuple, X_processed, dataset_path="data/insuran
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        if len(importances) != len(expanded_feature_names):
-            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but found {len(expanded_feature_names)} in input.")
+        if len(importances) != len(feature_names):
+            raise ValueError(
+                f"Feature mismatch: model expects {len(importances)} features but found {len(feature_names)} in input."
+            )
 
-        # Aggregate importances back to original feature names
+        # 🔹 Aggregate importances to original feature names
         importance_map = {}
-        for name, score in zip(expanded_feature_names, importances):
-            matched = False
-            for orig_col in original_features:
-                if name.startswith(orig_col):
-                    importance_map[orig_col] = importance_map.get(orig_col, 0) + score
-                    matched = True
+        for fname, score in zip(feature_names, importances):
+            for orig in original_features:
+                if fname.startswith(orig):
+                    importance_map[orig] = importance_map.get(orig, 0) + score
                     break
-            if not matched:
-                importance_map[name] = importance_map.get(name, 0) + score
+            else:
+                # fallback for unmatched
+                importance_map[fname] = score
 
-        # Convert to DataFrame
         df = pd.DataFrame(list(importance_map.items()), columns=["Feature", "Importance"])
         df = df.sort_values(by="Importance", ascending=False)
 
-        # Plot
+        # 🔹 Plot
         fig, ax = plt.subplots(figsize=(10, 5))
         sns.barplot(x="Importance", y="Feature", data=df.head(10), ax=ax)
         st.pyplot(fig)
