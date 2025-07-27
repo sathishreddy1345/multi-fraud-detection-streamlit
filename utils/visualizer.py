@@ -63,10 +63,11 @@ def plot_feature_importance(model_tuple, X_processed):
         feature_columns = X_processed.columns.tolist()
 
     try:
-        # Filter trained columns only
-        X_features = X_processed[feature_columns]
+        # Safely filter only available columns
+        available_features = [f for f in feature_columns if f in X_processed.columns]
+        X_features = X_processed[available_features]
 
-        # Choose correct importance attribute
+        # Get feature importances or coefficients
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "coef_"):
@@ -76,13 +77,14 @@ def plot_feature_importance(model_tuple, X_processed):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Validate shape
-        if len(importances) != len(feature_columns):
-            raise ValueError(f"Mismatch: {len(importances)} importances vs {len(feature_columns)} features")
+        # Check if feature lengths match
+        if len(importances) != len(available_features):
+            raise ValueError(
+                f"Model expects {len(importances)} features, but {len(available_features)} were found in X_processed."
+            )
 
-        # Plot
         df = pd.DataFrame({
-            "Feature": feature_columns,
+            "Feature": available_features,
             "Importance": importances
         }).sort_values(by="Importance", ascending=False)
 
@@ -92,8 +94,6 @@ def plot_feature_importance(model_tuple, X_processed):
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
-
-
 
 # ------------------------------
 # 🧪 Permutation Importance
