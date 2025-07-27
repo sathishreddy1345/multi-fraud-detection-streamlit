@@ -38,6 +38,8 @@ except Exception as e:
 # 🧠 Prediction Function
 # -----------------------------
 def predict_creditcard_fraud(df):
+    print("✅ Loaded models:", list(models_full.keys()))
+
     if df.empty or df.isnull().all().all():
         raise ValueError("Input dataframe is empty or invalid.")
 
