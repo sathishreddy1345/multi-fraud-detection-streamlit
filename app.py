@@ -125,7 +125,14 @@ if selected_tab in fraud_modules:
         df = pd.read_csv(uploaded, thousands=",")
         # 🧼 Force numeric conversion for all columns
         for col in df.columns:
-            df[col] = pd.to_numeric(df[col].astype(str).str.replace(",", "").str.replace("₹", ""), errors="coerce")
+        if df[col].dtype == object:
+            # Try to clean numeric-looking strings
+            cleaned = df[col].astype(str).str.replace(",", "").str.replace("₹", "")
+            try:
+                df[col] = pd.to_numeric(cleaned)
+            except:
+                df[col] = cleaned  # keep as string if not numeric
+
         
         # Drop any remaining non-numeric or fully empty columns
         df = df.dropna(axis=1, how="all")
