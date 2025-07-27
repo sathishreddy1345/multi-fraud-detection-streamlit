@@ -194,11 +194,7 @@ if selected_tab in fraud_modules:
 
                 plot_radar(model_scores)
                 plot_boxplot(processed)
-                st.markdown("### 🔬 DEBUG: Correlation Input Data")
-                st.write("Columns:", df.columns.tolist())
-                st.write("Dtypes:", df.dtypes)
-                st.write("Shape:", df.shape)
-                st.write("Head:", df.head())
+                
 
                 plot_correlation_heatmap(df)
                 download_model_report(processed)
