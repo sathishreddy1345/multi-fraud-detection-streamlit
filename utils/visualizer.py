@@ -55,7 +55,6 @@ def plot_bar(model_scores, key=None):
 def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
-    # Unpack model and features
     if isinstance(model_tuple, tuple):
         model, feature_columns = model_tuple
     else:
@@ -63,33 +62,28 @@ def plot_feature_importance(model_tuple, X_processed):
         feature_columns = X_processed.columns.tolist()
 
     try:
-        # Get inner estimator from pipeline if needed
+        # If model is a pipeline, extract last estimator with importances
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Make a copy to avoid modifying original
+        # Start from copy
         X_temp = X_processed.copy()
 
-        # Pad missing columns with 0
+        # Ensure all expected features are present (fill missing with 0)
         for col in feature_columns:
             if col not in X_temp.columns:
                 X_temp[col] = 0
 
-        # Extra columns that should not be there
-        extra_cols = set(X_temp.columns) - set(feature_columns)
-        if extra_cols:
-            X_temp = X_temp.drop(columns=extra_cols)
+        # Drop any extra columns
+        X_temp = X_temp[feature_columns]
 
-        # Reorder columns exactly as in training
-        X_features = X_temp[feature_columns]
-
-        # Get importances
+        # Extract feature importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
-        elif hasattr(model, "get_feature_importance"):  # CatBoost
+        elif hasattr(model, "get_feature_importance"):  # e.g., CatBoost
             importances = model.get_feature_importance()
         elif hasattr(model, "coef_"):
             coef = model.coef_
@@ -98,9 +92,10 @@ def plot_feature_importance(model_tuple, X_processed):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
+        # Final sanity check
         if len(importances) != len(feature_columns):
             raise ValueError(
-                f"Feature mismatch: model expects {len(importances)} features but found {len(feature_columns)}."
+                f"Feature mismatch: model expects {len(importances)} features but found {len(feature_columns)} after reconstruction."
             )
 
         # Plot
@@ -115,6 +110,7 @@ def plot_feature_importance(model_tuple, X_processed):
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
+
 
 # ------------------------------
 # 🧪 Permutation Importance
