@@ -320,7 +320,13 @@ def plot_correlation_heatmap(df, module=None):
 
     input_features = df.loc[:, ~df.columns.str.endswith('_score')]
     input_features = input_features.select_dtypes(include=[np.number])
-    input_features = input_features.loc[:, input_features.nunique() > 1]  # 🔥 drop constant columns
+    
+    # 🔥 Drop constant columns (no variation)
+    input_features = input_features.loc[:, input_features.nunique() > 1]
+    
+    # 🔥 Drop columns with too many NaNs
+    input_features = input_features.dropna(axis=1, thresh=int(0.9 * len(input_features)))
+
 
 
     if input_features.shape[1] > 1:
