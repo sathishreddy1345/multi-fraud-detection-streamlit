@@ -192,7 +192,7 @@ if selected_tab in fraud_modules:
                 try:
                     model_object = all_models[selected_model]
                     y_true = df['actual'] if 'actual' in df.columns else None
-                    plot_permutation_importance(default_model_full)
+                    plot_permutation_importance(selected_model)
 
                 except Exception as e:
                     st.warning(f"⚠️ Permutation importance failed: {e}")
