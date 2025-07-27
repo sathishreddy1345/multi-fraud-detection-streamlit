@@ -70,15 +70,23 @@ def plot_feature_importance(model_tuple, X_processed):
                     model = step
                     break
 
-        # Ensure all required features exist in X_processed
+        # Make a copy to avoid modifying original
+        X_temp = X_processed.copy()
+
+        # Pad missing columns with 0
         for col in feature_columns:
-            if col not in X_processed.columns:
-                X_processed[col] = 0  # pad missing features with 0
+            if col not in X_temp.columns:
+                X_temp[col] = 0
 
-        # Align feature order
-        X_features = X_processed[feature_columns]
+        # Extra columns that should not be there
+        extra_cols = set(X_temp.columns) - set(feature_columns)
+        if extra_cols:
+            X_temp = X_temp.drop(columns=extra_cols)
 
-        # Retrieve importance scores
+        # Reorder columns exactly as in training
+        X_features = X_temp[feature_columns]
+
+        # Get importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "get_feature_importance"):  # CatBoost
@@ -90,7 +98,6 @@ def plot_feature_importance(model_tuple, X_processed):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Check for length mismatch
         if len(importances) != len(feature_columns):
             raise ValueError(
                 f"Feature mismatch: model expects {len(importances)} features but found {len(feature_columns)}."
@@ -108,8 +115,6 @@ def plot_feature_importance(model_tuple, X_processed):
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
-
-
 
 # ------------------------------
 # 🧪 Permutation Importance
