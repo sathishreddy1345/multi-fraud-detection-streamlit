@@ -111,41 +111,72 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_tuple, X_processed, y_true=None):
+def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
     st.subheader("🎯 Permutation Feature Importance")
 
-    try:
-        # Handle (model, feature_columns) or just model
-        if isinstance(model_tuple, tuple):
-            model, _ = model_tuple
-        else:
-            model = model_tuple
+    # Handle (model, feature_columns) or just model
+    if isinstance(model_tuple, tuple):
+        model, feature_columns = model_tuple
+    else:
+        model = model_tuple
+        feature_columns = X_processed.columns.tolist()
 
-        # If target (y_true) not passed, warn and skip
-        if y_true is None or len(y_true) != len(X_processed):
-            st.warning("⚠️ Permutation importance requires a valid target array (`y_true`).")
+    try:
+        # Load dataset with labels
+        data_path = f"data/{module_name}.csv"
+        df = pd.read_csv(data_path)
+
+        # Auto-detect label column → convert to 'actual'
+        for label_col in ['actual', 'Class', 'fraud_reported', 'label', 'target']:
+            if label_col in df.columns:
+                if label_col == 'fraud_reported':
+                    df['actual'] = df['fraud_reported'].apply(lambda x: 1 if str(x).strip().upper() == "Y" else 0)
+                elif label_col != 'actual':
+                    df['actual'] = df[label_col]
+                break
+
+        if "actual" not in df.columns:
+            st.warning("⚠️ Permutation importance requires a valid target column (like 'Class' or 'fraud_reported').")
             return
 
-        # Use feature names from the preprocessed data
-        feature_names = X_processed.columns if hasattr(X_processed, "columns") else [f"Feature {i}" for i in range(X_processed.shape[1])]
+        # Drop non-numeric + fill
+        df = df.select_dtypes(include=[np.number]).fillna(0)
+
+        # Match features used by the model
+        df = df[[col for col in df.columns if col in feature_columns or col == "actual"]]
+
+        # Confirm all features present
+        missing = set(feature_columns) - set(df.columns)
+        if missing:
+            st.warning(f"⚠️ Skipping due to missing features in dataset: {missing}")
+            return
+
+        X = df[feature_columns]
+        y = df["actual"]
+
+        if y.nunique() < 2:
+            st.warning("⚠️ Need at least two classes in 'actual' for permutation importance.")
+            return
+
+        # Optional: scale input
+        from sklearn.preprocessing import StandardScaler
+        X_scaled = StandardScaler().fit_transform(X)
 
         # Run permutation importance
-        result = permutation_importance(model, X_processed, y_true, n_repeats=5, random_state=42)
+        result = permutation_importance(model, X_scaled, y, n_repeats=5, random_state=42)
 
         importances = result.importances_mean
-        if importances.sum() == 0:
-            st.warning("⚠️ All permutation importances are zero. The model may not be informative.")
-            return
+        sorted_idx = np.argsort(importances)
 
-        # Plot top 20 features
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sorted_idx = np.argsort(importances)[-20:]
-        sns.barplot(x=importances[sorted_idx], y=np.array(feature_names)[sorted_idx], ax=ax)
-        ax.set_title("Permutation Feature Importance (Top 20)")
+        # Plot
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
+        ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
     except Exception as e:
-        st.error(f"❌ Permutation importance failed: {e}")
+        st.warning(f"⚠️ Permutation importance failed: {e}")
+
 
 # ------------------------------
 # 🥧 Pie Chart
