@@ -111,78 +111,51 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-import streamlit as st
-import pandas as pd
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.inspection import permutation_importance
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-
-def plot_permutation_importance(module_or_df):
+def plot_permutation_importance(module_name):
     st.subheader("🎯 Permutation Feature Importance (Dataset-Based)")
 
     try:
-        # Load dataset
-        if isinstance(module_or_df, str):
-            path = f"data/{module_or_df.lower()}.csv"
-            df = pd.read_csv(path)
-        elif isinstance(module_or_df, pd.DataFrame):
-            df = module_or_df.copy()
-        else:
-            st.error("❌ Invalid input: must be module name or DataFrame.")
-            return
+        data_path = f"data/{module_name}.csv"
+        df = pd.read_csv(data_path)
 
-        df = df.dropna(axis=1, how='all')
-        df = df.dropna()
-
-        # Try to find the target column
-        target_col = None
+        # Try to find a label column
+        label_col = None
         for col in df.columns:
-            if col.lower() in ["class", "label", "fraud", "fraud_reported", "target"]:
-                target_col = col
+            if col.lower() in ['fraud', 'target', 'label', 'class', 'actual']:
+                label_col = col
                 break
 
-        if not target_col:
+        if label_col is None:
             st.warning("⚠️ No label column found for permutation importance.")
             return
 
-        # Encode label if needed
-        y = df[target_col]
-        if y.dtype == object or y.dtype.name == 'category':
-            y = LabelEncoder().fit_transform(y)
+        y = df[label_col]
+        X = df.drop(columns=[label_col])
 
-        # Select numeric features
-        X = df.drop(columns=[target_col])
-        X = X.select_dtypes(include=[np.number])
-        if X.shape[1] < 2:
-            st.warning("⚠️ Not enough numeric features for permutation importance.")
-            return
+        # One-hot encode categorical columns
+        X = pd.get_dummies(X)
+        X = X.fillna(0)
 
-        # Train simple model (RandomForest)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.inspection import permutation_importance
 
-        result = permutation_importance(model, X_test, y_test, n_repeats=5, random_state=42)
+        # Basic classifier just for analysis
+        clf = RandomForestClassifier(random_state=42)
+        clf.fit(X, y)
 
+        result = permutation_importance(clf, X, y, n_repeats=5, random_state=42)
         importances = result.importances_mean
-        if importances.sum() == 0:
-            st.warning("⚠️ All importances are zero — dataset might be uninformative.")
-            return
 
         # Plot
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sorted_idx = np.argsort(importances)
+        fig, ax = plt.subplots(figsize=(10, 5))
+        sorted_idx = importances.argsort()
         ax.barh(X.columns[sorted_idx], importances[sorted_idx])
-        ax.set_title("Permutation Importances (Dataset-Based)")
+        ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Permutation importance failed: {e}")
+
 
 
 # ------------------------------
