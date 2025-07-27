@@ -111,71 +111,61 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_tuple, X_processed, module_name="insurance"):
+def plot_permutation_importance(model_tuple, X_processed, y=None):
     st.subheader("🎯 Permutation Feature Importance")
 
     try:
-        # Handle (model, features)
+        # Unpack model and features
         if isinstance(model_tuple, tuple):
             model, feature_columns = model_tuple
         else:
             model = model_tuple
             feature_columns = X_processed.columns.tolist()
 
-        # Load dataset
-        df = pd.read_csv(f"data/{module_name}.csv")
+        # Ensure y (target) is provided or fallback
+        if y is None:
+            # Attempt to load from dataset
+            df_path = "data/insurance.csv"  # 🔁 You can auto-map based on module if needed
+            df = pd.read_csv(df_path)
 
-        # Handle label
-        for col in ['actual', 'Class', 'fraud_reported', 'label', 'target']:
-            if col in df.columns:
-                if col == 'fraud_reported':
-                    df['actual'] = df[col].apply(lambda x: 1 if str(x).strip().upper() == 'Y' else 0)
-                else:
-                    df['actual'] = df[col]
-                break
+            for col in ['fraud_reported', 'actual', 'Class', 'label', 'target']:
+                if col in df.columns:
+                    if col == 'fraud_reported':
+                        df['actual'] = df[col].apply(lambda x: 1 if str(x).strip().upper() == 'Y' else 0)
+                    else:
+                        df['actual'] = df[col]
+                    break
+            else:
+                st.warning("⚠️ No valid target column found.")
+                return
 
-        if "actual" not in df.columns:
-            st.warning("⚠️ Could not determine target column.")
-            return
+            y = df['actual']
 
-        y = df['actual']
         if y.nunique() < 2:
-            st.warning("⚠️ Need at least two classes.")
+            st.warning("⚠️ Need at least two classes for permutation importance.")
             return
 
-        # Select relevant features
-        X = df[feature_columns].copy()
-
-        # 🔁 Encode non-numeric columns
-        X = pd.get_dummies(X, drop_first=True)
-
-        # Match processed input columns with the model
-        available_features = [f for f in X.columns if f in X_processed.columns]
-        if not available_features:
-            st.warning("⚠️ No usable numeric features after encoding.")
-            return
-
-        X = X[available_features]
-
-        # Scale
-        from sklearn.preprocessing import StandardScaler
-        X_scaled = StandardScaler().fit_transform(X)
-
-        # Permutation Importance
+        # Run permutation importance on already processed X
         from sklearn.inspection import permutation_importance
-        result = permutation_importance(model, X_scaled, y, n_repeats=5, random_state=42)
+        result = permutation_importance(
+            model, X_processed, y,
+            n_repeats=5, random_state=42, scoring='roc_auc'
+        )
 
         importances = result.importances_mean
-        sorted_idx = np.argsort(importances)[-15:]  # top 15
+        if np.all(importances == 0):
+            st.warning("⚠️ All importances are zero. Model may be uninformative.")
+            return
+
+        sorted_idx = np.argsort(importances)[-15:]
 
         fig, ax = plt.subplots(figsize=(10, 5))
-        ax.barh(np.array(X.columns)[sorted_idx], importances[sorted_idx])
+        ax.barh(np.array(X_processed.columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Permutation importance failed: {e}")
-
 
 
 
