@@ -111,71 +111,62 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(model_tuple, X_processed, module_name="loan"):
+def plot_permutation_importance(model_tuple, X_processed, module_name="insurance"):
     st.subheader("🎯 Permutation Feature Importance")
 
-    # Handle (model, feature_columns) or just model
-    if isinstance(model_tuple, tuple):
-        model, feature_columns = model_tuple
-    else:
-        model = model_tuple
-        feature_columns = X_processed.columns.tolist()
-
     try:
-        # Load dataset with labels
-        data_path = f"data/{module_name}.csv"
-        df = pd.read_csv(data_path)
+        # Handle (model, features) tuple
+        if isinstance(model_tuple, tuple):
+            model, feature_columns = model_tuple
+        else:
+            model = model_tuple
+            feature_columns = X_processed.columns.tolist()
 
-        # Auto-detect label column → convert to 'actual'
-        for label_col in ['actual', 'Class', 'fraud_reported', 'label', 'target']:
-            if label_col in df.columns:
-                if label_col == 'fraud_reported':
-                    df['actual'] = df['fraud_reported'].apply(lambda x: 1 if str(x).strip().upper() == "Y" else 0)
-                elif label_col != 'actual':
-                    df['actual'] = df[label_col]
+        # Load true labels from the original dataset
+        df = pd.read_csv(f"data/{module_name}.csv")
+
+        # Extract binary target as 'actual'
+        for col in ['actual', 'Class', 'fraud_reported', 'label', 'target']:
+            if col in df.columns:
+                if col == 'fraud_reported':
+                    df['actual'] = df['fraud_reported'].apply(lambda x: 1 if str(x).upper() == 'Y' else 0)
+                elif col != 'actual':
+                    df['actual'] = df[col]
                 break
 
         if "actual" not in df.columns:
-            st.warning("⚠️ Permutation importance requires a valid target column (like 'Class' or 'fraud_reported').")
+            st.warning("⚠️ Could not determine target column.")
             return
 
-        # Drop non-numeric + fill
-        df = df.select_dtypes(include=[np.number]).fillna(0)
+        y = df['actual']
 
-        # Match features used by the model
-        df = df[[col for col in df.columns if col in feature_columns or col == "actual"]]
-
-        # Confirm all features present
-        missing = set(feature_columns) - set(df.columns)
-        if missing:
-            st.warning(f"⚠️ Skipping due to missing features in dataset: {missing}")
-            return
-
-        X = df[feature_columns]
-        y = df["actual"]
-
+        # Check class balance
         if y.nunique() < 2:
-            st.warning("⚠️ Need at least two classes in 'actual' for permutation importance.")
+            st.warning("⚠️ Need at least two classes for permutation importance.")
             return
 
-        # Optional: scale input
+        # Use only the features present in processed input
+        X = X_processed.copy()
+
+        # Scale (optional)
         from sklearn.preprocessing import StandardScaler
         X_scaled = StandardScaler().fit_transform(X)
 
-        # Run permutation importance
+        # Compute permutation importance
         result = permutation_importance(model, X_scaled, y, n_repeats=5, random_state=42)
 
         importances = result.importances_mean
         sorted_idx = np.argsort(importances)
 
         # Plot
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.barh(np.array(feature_columns)[sorted_idx], importances[sorted_idx])
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.barh(np.array(X.columns)[sorted_idx], importances[sorted_idx])
         ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
     except Exception as e:
         st.warning(f"⚠️ Permutation importance failed: {e}")
+
 
 
 # ------------------------------
