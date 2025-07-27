@@ -24,8 +24,9 @@ def load_dataset_for_module(module_name):
             return None
 
         df = pd.read_csv(path)
-        df = df.select_dtypes(include=[np.number]).fillna(0)
+        df = df.fillna(0)  # keep all columns, including numeric + categorical
         return df
+
     except Exception as e:
         st.error(f"❌ Failed to load dataset for module `{module_name}`: {e}")
         return None
