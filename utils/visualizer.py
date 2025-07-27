@@ -154,10 +154,9 @@ def plot_permutation_importance(module_or_df):
 
         # Try to find the target column
         target_col = None
-        for col in df.columns:
-            if col.lower() in ["class", "label", "isFraud", "fraud_reported", "target"]:
-                target_col = col
-                break
+        df.columns = [col.strip().lower() for col in df.columns]  # normalize
+        target_col = next((col for col in df.columns if col in ["isfraud", "class", "label", "fraud_reported", "target"]), None)
+
 
         if not target_col:
             st.warning("⚠️ No label column found for permutation importance.")
@@ -321,6 +320,8 @@ def plot_correlation_heatmap(df, module=None):
 
     input_features = df.loc[:, ~df.columns.str.endswith('_score')]
     input_features = input_features.select_dtypes(include=[np.number])
+    input_features = input_features.loc[:, input_features.nunique() > 1]  # 🔥 drop constant columns
+
 
     if input_features.shape[1] > 1:
         corr = input_features.corr()
