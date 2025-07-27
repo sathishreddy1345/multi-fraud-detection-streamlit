@@ -313,8 +313,7 @@ def detect_module_from_df(df):
 
 def plot_correlation_heatmap(df, module=None):
     st.subheader("🌡️ Correlation Heatmap")
-    st.write("🧪 Final input features for correlation:", input_features.columns.tolist())
-    st.write("📊 Dtypes:", input_features.dtypes)
+    
 
 
     if df is None or df.empty or df.isnull().all().all():
@@ -326,12 +325,16 @@ def plot_correlation_heatmap(df, module=None):
 
     # Select only numeric features and drop constant ones
     input_features = df.select_dtypes(include=[np.number])
+    
 
     
     if 'isFraud' in input_features.columns:
         input_features = input_features.drop(columns=['isFraud'])  # optional
 
     input_features = input_features.loc[:, input_features.nunique() > 1]
+
+    st.write("🧪 Final input features for correlation:", input_features.columns.tolist())
+    st.write("📊 Dtypes:", input_features.dtypes)
 
     # 🧪 DEBUG: Print available columns
     st.write("✅ Numeric columns after filtering:", input_features.columns.tolist())
