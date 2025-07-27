@@ -64,17 +64,18 @@ def plot_feature_importance(model_tuple, dataset_path="data/insurance.csv"):
     try:
         # Load original dataset to get original feature names
         df = pd.read_csv(dataset_path)
-        feature_columns = [
-            col for col in df.columns
-            if col.lower() not in ["fraud_reported", "class", "label", "target"]
-        ]
-        df = df[feature_columns]
-        df = df.select_dtypes(include=[np.number])  # keep only numeric
+
+        # Drop label columns if they exist
+        df = df.drop(columns=[col for col in df.columns if col.lower() in ["fraud_reported", "class", "label", "target"]], errors="ignore")
+
+        # Keep only numeric columns
+        df = df.select_dtypes(include=[np.number])
+        feature_columns = df.columns.tolist()
 
         # Unpack model
         model = model_tuple[0] if isinstance(model_tuple, tuple) else model_tuple
 
-        # Get actual model from pipeline if needed
+        # Get inner estimator if it's in a pipeline
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
@@ -91,22 +92,23 @@ def plot_feature_importance(model_tuple, dataset_path="data/insurance.csv"):
             st.warning("⚠️ Feature importance not available for this model.")
             return
 
-        # Validate length
-        if len(importances) != len(df.columns):
-            raise ValueError(f"Model expects {len(importances)} features, but dataset has {len(df.columns)} numeric columns.")
+        # Check matching length
+        if len(importances) != len(feature_columns):
+            raise ValueError(f"Model expects {len(importances)} features, but dataset has {len(feature_columns)} numeric columns.")
 
         # Plot
-        imp_df = pd.DataFrame({
-            "Feature": df.columns,
+        df_importance = pd.DataFrame({
+            "Feature": feature_columns,
             "Importance": importances
         }).sort_values(by="Importance", ascending=False)
 
         fig, ax = plt.subplots(figsize=(10, 5))
-        sns.barplot(x="Importance", y="Feature", data=imp_df.head(10), ax=ax)
+        sns.barplot(x="Importance", y="Feature", data=df_importance.head(10), ax=ax)
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
+
 
 
 # ------------------------------
