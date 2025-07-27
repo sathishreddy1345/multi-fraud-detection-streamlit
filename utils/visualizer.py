@@ -120,7 +120,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.inspection import permutation_importance
 from sklearn.model_selection import train_test_split
 
-def plot_simple_permutation_importance(module="loan"):
+def plot_permutation_importance(module="loan"):
     st.subheader("🎯 Permutation Feature Importance (Simple)")
 
     # Map modules to files
