@@ -313,33 +313,28 @@ def plot_correlation_heatmap(df, module=None):
     if module is None:
         module = detect_module_from_df(df)
 
-    # Fallback if df is invalid
     if df is None or df.empty or df.isnull().all().all():
-        module_df = load_dataset_for_module(module)
-        df = module_df if module_df is not None else df
+        df = load_dataset_for_module(module)
+        if df is None:
+            st.warning("⚠️ Could not load a valid dataset.")
+            return
 
-    input_features = df.loc[:, ~df.columns.str.endswith('_score')]
-    input_features = input_features.select_dtypes(include=[np.number])
-    
-    # 🔥 Drop constant columns (no variation)
+    input_features = df.select_dtypes(include=[np.number]).drop(columns=['isFraud'], errors='ignore')
     input_features = input_features.loc[:, input_features.nunique() > 1]
-    
-    # 🔥 Drop columns with too many NaNs
-    input_features = input_features.dropna(axis=1, thresh=int(0.9 * len(input_features)))
 
-
-
-    if input_features.shape[1] > 1:
-        corr = input_features.corr()
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(
-            corr, annot=True, cmap='coolwarm',
-            vmin=-1, vmax=1, center=0,
-            fmt=".2f", linewidths=0.5, linecolor='gray'
-        )
-        st.pyplot(fig)
-    else:
+    if input_features.shape[1] < 2:
         st.warning("⚠️ Not enough numeric features for correlation heatmap.")
+        st.write("🔍 Available columns:", input_features.columns.tolist())
+        return
+
+    corr = input_features.corr()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.heatmap(
+        corr, annot=True, cmap='coolwarm',
+        vmin=-1, vmax=1, center=0,
+        fmt=".2f", linewidths=0.5, linecolor='gray'
+    )
+    st.pyplot(fig)
 
 
 # ------------------------------
