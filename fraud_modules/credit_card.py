@@ -1,34 +1,37 @@
 # fraud_modules/credit_card.py
 
-import pickle
 import pandas as pd
 import numpy as np
+import joblib
 from sklearn.preprocessing import StandardScaler
+import os
 
 # -----------------------------
 # 🔃 Load all credit card models
 # -----------------------------
-model_names = ["rf", "xgb", "lgbm", "cat", "lr", "iso"]
+model_names = ["lr", "rf", "xgb", "cat", "iso"]
 models = {}
+models_full = {}
 
 for name in model_names:
     try:
-        with open(f"models/credit_card_{name}.pkl", "rb") as f:
-            obj = pickle.load(f)
-            model = obj[0] if isinstance(obj, tuple) else obj
-            features = obj[1] if isinstance(obj, tuple) else None
-            models[name] = (model, features)
+        path = f"models/credit_card_{name}.pkl"
+        model = joblib.load(path)
+        feature_names = model.named_steps["pre"].get_feature_names_out()
+        models[name] = model
+        models_full[name] = (model, feature_names)
     except Exception as e:
-        print(f"❌ Failed loading credit_card_{name}: {e}")
+        print(f"❌ Error loading {name}: {e}")
 
 # -----------------------------
-# 📦 Load full dataset (for fallback visualizations)
+# 📦 Load fallback dataset
 # -----------------------------
 try:
-    full_data = pd.read_csv("data/creditcard_balanced.csv")
-    print("✅ Loaded fallback credit card dataset for visualization")
+    full_data = pd.read_csv("data/creditcard_generated_30k.csv")
+    full_data.rename(columns={"Class": "actual"}, inplace=True)
+    print("✅ Fallback dataset loaded for visualization")
 except Exception as e:
-    print(f"❌ Could not load fallback dataset: {e}")
+    print(f"⚠️ Could not load fallback dataset: {e}")
     full_data = None
 
 # -----------------------------
@@ -36,81 +39,65 @@ except Exception as e:
 # -----------------------------
 def predict_creditcard_fraud(df):
     if df.empty or df.isnull().all().all():
-        raise ValueError("Input dataframe is empty or contains only NaNs.")
+        raise ValueError("Input dataframe is empty or invalid.")
 
     df = df.copy()
 
-    # 🏷️ Rename label if needed
+    # Rename label if present
     if "Class" in df.columns:
         df["actual"] = df["Class"]
         df.drop(columns=["Class"], inplace=True)
 
-    # 🔢 Keep only numeric columns
-    df = df.select_dtypes(include=[np.number])
-    df.fillna(0, inplace=True)
+    df = df.select_dtypes(include=[np.number]).fillna(0)
 
-    print("📊 Input columns:", df.columns.tolist())
     print("📊 Input shape:", df.shape)
-
     scores = {}
-    scored_df = df.copy()
+    result_df = df.copy()
 
-    for name, (model, features) in models.items():
+    for name, (model, features) in models_full.items():
         try:
-            if features:
-                missing = set(features) - set(df.columns)
-                if missing:
-                    raise ValueError(f"Missing features for model {name}: {missing}")
-                X = df[features]
-            else:
-                X = df
+            # Ensure feature alignment
+            for col in features:
+                if col not in df.columns:
+                    df[col] = 0
+            X = df[features]
 
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
-
+            # Predict
             if name == "iso":
-                raw_scores = -model.decision_function(X_scaled)
-                norm_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
-                scored_df[f"{name}_score"] = norm_scores
+                raw = -model.decision_function(X)
+                norm_scores = (raw - raw.min()) / (raw.max() - raw.min() + 1e-9)
                 scores[name] = norm_scores.mean()
+                result_df[f"{name}_score"] = norm_scores
             else:
-                probs = model.predict_proba(X_scaled)[:, 1]
-                scored_df[f"{name}_score"] = probs
-                scores[name] = probs.mean()
+                prob = model.predict_proba(X)[:, 1]
+                scores[name] = prob.mean()
+                result_df[f"{name}_score"] = prob
 
-            print(f"✅ {name.upper()} model score: {scores[name]:.4f}")
+            print(f"✅ {name.upper()} score: {scores[name]:.4f}")
 
         except Exception as e:
-            print(f"❌ Error in model {name}: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"❌ Failed model {name}: {e}")
 
     if not scores:
-        raise ValueError("❌ No models were able to predict.")
+        raise ValueError("❌ No models could predict.")
 
     final_score = np.mean(list(scores.values()))
 
-    # Attach true labels if available
+    # Attach actual if present
     if "actual" in df.columns:
-        scored_df["actual"] = df["actual"].values
+        result_df["actual"] = df["actual"].values
 
-    # Visual fallback
+    # 🔁 Fallback for visualizer
     if len(df) < 5 and full_data is not None:
-        print("🔁 Using full dataset for visualizations due to small input size")
-        fallback = full_data.select_dtypes(include=[np.number]).fillna(0).copy()
+        fallback_df = full_data.select_dtypes(include=[np.number]).copy()
+        if "actual" in full_data.columns:
+            fallback_df["actual"] = full_data["actual"]
+        return final_score, scores, fallback_df
 
-        if "Class" in full_data.columns:
-            fallback["actual"] = full_data["Class"]
-
-        return final_score, scores, fallback
-
-    return final_score, scores, scored_df
+    return final_score, scores, result_df
 
 # -----------------------------
-# 🌐 Expose models
+# 🌐 Export
 # -----------------------------
-models_plain = {k: v[0] for k, v in models.items()}
-models_full = models
-
-globals()["models"] = models_full
-globals()["models_plain"] = models_plain
+globals()["models"] = models
+globals()["models_full"] = models_full
