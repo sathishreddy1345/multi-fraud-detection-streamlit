@@ -186,7 +186,7 @@ if selected_tab in fraud_modules:
 
                 plot_radar(model_scores)
                 plot_boxplot(processed)
-                plot_correlation_heatmap(processed)
+                plot_correlation_heatmap(df)
                 download_model_report(processed)
 
                 try:
