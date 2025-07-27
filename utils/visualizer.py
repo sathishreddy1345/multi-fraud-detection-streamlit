@@ -114,74 +114,75 @@ def plot_feature_importance(model_tuple, X_processed):
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.inspection import permutation_importance
-from sklearn.preprocessing import LabelEncoder
+import seaborn as sns
 import matplotlib.pyplot as plt
 
-def plot_permutation_importance(data_or_module="insurance"):
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.inspection import permutation_importance
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+
+def plot_dataset_permutation_importance(module_or_df):
     st.subheader("🎯 Permutation Feature Importance (Dataset-Based)")
 
-    # Map known modules to paths
-    dataset_paths = {
-        "loan": "data/loan.csv",
-        "insurance": "data/insurance.csv",
-        "credit_card": "data/creditcard.csv",
-        "paysim": "data/paysim.csv"
-    }
-
-    # Determine if input is a module string or a DataFrame
-    if isinstance(data_or_module, str):
-        module_name = data_or_module.lower()
-        path = dataset_paths.get(module_name)
-        if not path:
-            st.error(f"❌ Unknown module name: {module_name}")
-            return
-        df = pd.read_csv(path)
-    elif isinstance(data_or_module, pd.DataFrame):
-        df = data_or_module.copy()
-    else:
-        st.error("❌ Input must be a module name or a DataFrame.")
-        return
-
     try:
-        # Auto-detect label column
-        target_col = next((col for col in df.columns if col.lower() in [
-            'class', 'label', 'fraud', 'fraud_reported', 'target', 'actual'
-        ]), None)
+        # Load dataset
+        if isinstance(module_or_df, str):
+            path = f"data/{module_or_df.lower()}.csv"
+            df = pd.read_csv(path)
+        elif isinstance(module_or_df, pd.DataFrame):
+            df = module_or_df.copy()
+        else:
+            st.error("❌ Invalid input: must be module name or DataFrame.")
+            return
+
+        df = df.dropna(axis=1, how='all')
+        df = df.dropna()
+
+        # Try to find the target column
+        target_col = None
+        for col in df.columns:
+            if col.lower() in ["class", "label", "fraud", "fraud_reported", "target"]:
+                target_col = col
+                break
 
         if not target_col:
             st.warning("⚠️ No label column found for permutation importance.")
             return
 
+        # Encode label if needed
         y = df[target_col]
+        if y.dtype == object or y.dtype.name == 'category':
+            y = LabelEncoder().fit_transform(y)
+
+        # Select numeric features
         X = df.drop(columns=[target_col])
+        X = X.select_dtypes(include=[np.number])
+        if X.shape[1] < 2:
+            st.warning("⚠️ Not enough numeric features for permutation importance.")
+            return
 
-        # Encode categorical variables
-        for col in X.select_dtypes(include='object').columns:
-            X[col] = LabelEncoder().fit_transform(X[col].astype(str))
-
-        if y.dtype == 'object':
-            y = LabelEncoder().fit_transform(y.astype(str))
-
-        # Train a simple model
-        X_train, _, y_train, _ = train_test_split(X, y, test_size=0.3, random_state=42)
+        # Train simple model (RandomForest)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
 
-        result = permutation_importance(model, X_train, y_train, n_repeats=5, random_state=42)
+        result = permutation_importance(model, X_test, y_test, n_repeats=5, random_state=42)
+
         importances = result.importances_mean
-        sorted_idx = np.argsort(importances)
+        if importances.sum() == 0:
+            st.warning("⚠️ All importances are zero — dataset might be uninformative.")
+            return
 
         # Plot
         fig, ax = plt.subplots(figsize=(10, 6))
+        sorted_idx = np.argsort(importances)
         ax.barh(X.columns[sorted_idx], importances[sorted_idx])
-        ax.set_title("Permutation Importances")
+        ax.set_title("Permutation Importances (Dataset-Based)")
         st.pyplot(fig)
 
     except Exception as e:
-        st.error(f"⚠️ Permutation importance failed: {e}")
+        st.error(f"❌ Permutation importance failed: {e}")
 
 
 # ------------------------------
