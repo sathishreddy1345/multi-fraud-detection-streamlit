@@ -52,35 +52,44 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
+import streamlit as st
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # Step 1: Unpack model
+        # Step 1: Unpack model and optionally feature names
         if isinstance(model_tuple, tuple):
-            model, _ = model_tuple
+            model, feature_columns = model_tuple
         else:
             model = model_tuple
+            feature_columns = X_processed.columns.tolist()
 
         feature_names = None
 
-        # Step 2: If pipeline, extract from preprocessor
+        # Step 2: If pipeline, extract preprocessor and actual model
         if hasattr(model, "named_steps"):
             steps = model.named_steps
 
-            # Try to extract preprocessor feature names
-            for name, step in steps.items():
-                if hasattr(step, "get_feature_names_out"):
-                    feature_names = step.get_feature_names_out()
-                    break  # use first match
+            # Attempt to get transformed feature names from the preprocessor
+            if "pre" in steps:
+                preprocessor = steps["pre"]
+                try:
+                    feature_names = preprocessor.get_feature_names_out()
+                except Exception:
+                    pass  # fallback later
 
-            # Get actual model inside pipeline
+            # Find the actual model step
             for step in reversed(steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Step 3: Get importances
+        # Step 3: Get feature importances or coefficients
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "coef_"):
@@ -90,11 +99,15 @@ def plot_feature_importance(model_tuple, X_processed):
             st.warning("⚠️ This model does not support feature importance.")
             return
 
-        # Step 4: Fallback feature names
-        if feature_names is None or len(feature_names) != len(importances):
+        # Step 4: Fallback to processed DataFrame column names
+        if feature_names is None:
+            feature_names = feature_columns
+
+        # Step 5: Final fallback if still mismatch
+        if len(feature_names) != len(importances):
             feature_names = [f"Feature {i}" for i in range(len(importances))]
 
-        # Step 5: Plot
+        # Step 6: Plot
         df = pd.DataFrame({
             "Feature": feature_names,
             "Importance": importances
