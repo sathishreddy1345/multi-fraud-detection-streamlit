@@ -111,72 +111,75 @@ def plot_feature_importance(model_tuple, X_processed):
 # ------------------------------
 # 🧪 Permutation Importance
 # ------------------------------
-def plot_permutation_importance(module_name="loan", top_n=15):
-    import streamlit as st
-    import pandas as pd
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.preprocessing import LabelEncoder, StandardScaler
-    from sklearn.inspection import permutation_importance
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.inspection import permutation_importance
+from sklearn.model_selection import train_test_split
 
-    st.subheader("🎯 Permutation Feature Importance (Dataset-Based)")
+def plot_simple_permutation_importance(module="loan"):
+    st.subheader("🎯 Permutation Feature Importance (Simple)")
+
+    # Map modules to files
+    dataset_paths = {
+        "loan": "data/loan.csv",
+        "insurance": "data/insurance.csv",
+        "credit_card": "data/creditcard.csv",
+        "paysim": "data/paysim.csv"
+    }
+
+    path = dataset_paths.get(module.lower())
+    if not path:
+        st.error(f"❌ No dataset found for module '{module}'")
+        return
 
     try:
-        # Load dataset
-        path = f"data/{module_name}.csv"
         df = pd.read_csv(path)
+    except Exception as e:
+        st.error(f"❌ Failed to load dataset: {e}")
+        return
 
-        # Convert common label formats
-        if 'fraud_reported' in df.columns:
-            df['actual'] = df['fraud_reported'].map({'Y': 1, 'N': 0})
-        else:
-            for col in df.columns:
-                if col.lower() in ['class', 'label', 'target', 'fraud']:
-                    df['actual'] = df[col]
-                    break
+    # Identify target column
+    target_col = next((col for col in df.columns if col.lower() in ['class', 'label', 'fraud', 'fraud_reported', 'target']), None)
+    if not target_col:
+        st.error("❌ No valid target column found.")
+        return
 
-        if 'actual' not in df.columns:
-            st.warning("⚠️ No valid target column found.")
-            return
+    # Clean and encode
+    y = df[target_col]
+    X = df.drop(columns=[target_col])
 
-        # Encode categorical features
-        df = df.copy()
-        for col in df.select_dtypes(include='object').columns:
-            df[col] = LabelEncoder().fit_transform(df[col].astype(str))
+    # Encode categorical columns
+    for col in X.select_dtypes(include='object').columns:
+        X[col] = LabelEncoder().fit_transform(X[col].astype(str))
 
-        df = df.select_dtypes(include=[np.number]).fillna(0)
+    if y.dtype == 'object':
+        y = LabelEncoder().fit_transform(y.astype(str))
 
-        X = df.drop(columns=['actual'])
-        y = df['actual']
+    # Train/test split
+    try:
+        X_train, _, y_train, _ = train_test_split(X, y, test_size=0.3, random_state=42)
 
-        if y.nunique() < 2:
-            st.warning("⚠️ Label column must contain at least two classes.")
-            return
-
-        # Train temporary model
         model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(X, y)
+        model.fit(X_train, y_train)
 
-        # Scale features
-        X_scaled = StandardScaler().fit_transform(X)
-
-        # Permutation Importance
-        result = permutation_importance(model, X_scaled, y, n_repeats=5, random_state=42)
+        result = permutation_importance(model, X_train, y_train, n_repeats=5, random_state=42)
         importances = result.importances_mean
 
-        # Plot top N
-        fig, ax = plt.subplots(figsize=(10, 5))
-        sorted_idx = np.argsort(importances)[-top_n:]
-        ax.barh(X.columns[sorted_idx], importances[sorted_idx])
-        ax.set_title(f"Top {top_n} Permutation Importances – {module_name.title()}")
+        # Plot
+        sorted_idx = np.argsort(importances)
+        top_features = X.columns[sorted_idx]
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.barh(top_features, importances[sorted_idx])
+        ax.set_title("Permutation Importances")
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Permutation importance failed: {e}")
-
-
 
 # ------------------------------
 # 🥧 Pie Chart
