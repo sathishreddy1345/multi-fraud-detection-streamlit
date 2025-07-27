@@ -52,25 +52,36 @@ def plot_bar(model_scores, key=None):
 # ------------------------------
 # 🔍 Feature Importance Plot
 # ------------------------------
-def plot_feature_importance(model_tuple, _):
+def plot_feature_importance(model_tuple, X_processed):
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # Unpack model and feature names (used during training)
+        # Step 1: Unpack model and feature names (if available)
         if isinstance(model_tuple, tuple):
             model, trained_features = model_tuple
         else:
             model = model_tuple
             trained_features = None
 
-        # If model is part of a pipeline, get the final estimator
+        # Step 2: If model is a pipeline, extract the final estimator and feature names
+        feature_names = None
         if hasattr(model, "named_steps"):
-            for step in reversed(model.named_steps.values()):
+            steps = model.named_steps
+            if "preprocessor" in steps:
+                preprocessor = steps["preprocessor"]
+                if hasattr(preprocessor, "get_feature_names_out"):
+                    feature_names = preprocessor.get_feature_names_out()
+            # Replace model with final estimator
+            for step in reversed(steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Extract importances
+        # Step 3: If no feature names found yet, use trained or fallback
+        if feature_names is None:
+            feature_names = trained_features or [f"Feature {i}" for i in range(len(getattr(model, "feature_importances_", [])))]
+
+        # Step 4: Get importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "get_feature_importance"):
@@ -82,22 +93,23 @@ def plot_feature_importance(model_tuple, _):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Use trained feature names if available and match count
-        if trained_features is None or len(trained_features) != len(importances):
-            trained_features = [f"Feature {i}" for i in range(len(importances))]
+        # Step 5: Validate shape
+        if len(importances) != len(feature_names):
+            raise ValueError(f"Feature mismatch: model expects {len(importances)} features but got {len(feature_names)} names.")
 
-        # Create and plot importance dataframe
+        # Step 6: Plot
         df = pd.DataFrame({
-            "Feature": trained_features,
+            "Feature": feature_names,
             "Importance": importances
         }).sort_values(by="Importance", ascending=False)
 
-        fig, ax = plt.subplots(figsize=(10, 5))
+        fig, ax = plt.subplots(figsize=(10, 6))
         sns.barplot(x="Importance", y="Feature", data=df.head(20), ax=ax)
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
+
 
 # ------------------------------
 # 🧪 Permutation Importance
