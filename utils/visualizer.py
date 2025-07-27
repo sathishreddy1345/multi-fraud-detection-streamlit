@@ -243,7 +243,7 @@ def plot_radar(model_scores):
 # ------------------------------
 # 🌡️ Correlation Heatmap
 # ------------------------------
-def plot_correlation_heatmap(df, module="loan"):
+def plot_correlation_heatmap(df, module):
     st.subheader("🌡️ Correlation Heatmap")
     module_df = load_dataset_for_module(module)
 
