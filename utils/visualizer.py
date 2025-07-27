@@ -22,10 +22,13 @@ def load_dataset_for_module(module_name):
         if not path:
             st.warning(f"⚠️ No dataset file mapped for: {module_name}")
             return None
+        st.write("🧪 Column types:", df.dtypes)
 
         df = pd.read_csv(path)
-        df = df.fillna(0)  # keep all columns, including numeric + categorical
+        df = df.apply(pd.to_numeric, errors='ignore')  # Convert numeric-looking strings
+        df = df.fillna(0)
         return df
+
 
     except Exception as e:
         st.error(f"❌ Failed to load dataset for module `{module_name}`: {e}")
