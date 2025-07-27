@@ -56,21 +56,21 @@ def plot_feature_importance(model_tuple, _):
     st.subheader("📌 Feature Importance (Model-Based)")
 
     try:
-        # Extract model and trained features
+        # Unpack model and feature names (used during training)
         if isinstance(model_tuple, tuple):
             model, trained_features = model_tuple
         else:
             model = model_tuple
-            trained_features = [f"Feature {i}" for i in range(len(getattr(model, 'feature_importances_', [])))]
+            trained_features = None
 
-        # If model is in pipeline, get estimator with feature importances
+        # If model is part of a pipeline, get the final estimator
         if hasattr(model, "named_steps"):
             for step in reversed(model.named_steps.values()):
                 if hasattr(step, "feature_importances_") or hasattr(step, "coef_"):
                     model = step
                     break
 
-        # Get importances
+        # Extract importances
         if hasattr(model, "feature_importances_"):
             importances = model.feature_importances_
         elif hasattr(model, "get_feature_importance"):
@@ -82,11 +82,11 @@ def plot_feature_importance(model_tuple, _):
             st.info("⚠️ Feature importance not available for this model.")
             return
 
-        # Fallback feature names
-        if not trained_features or len(trained_features) != len(importances):
+        # Use trained feature names if available and match count
+        if trained_features is None or len(trained_features) != len(importances):
             trained_features = [f"Feature {i}" for i in range(len(importances))]
 
-        # Plot
+        # Create and plot importance dataframe
         df = pd.DataFrame({
             "Feature": trained_features,
             "Importance": importances
@@ -98,7 +98,6 @@ def plot_feature_importance(model_tuple, _):
 
     except Exception as e:
         st.error(f"❌ Feature importance plot failed: {e}")
-
 
 # ------------------------------
 # 🧪 Permutation Importance
