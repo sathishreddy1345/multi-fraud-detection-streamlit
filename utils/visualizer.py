@@ -312,48 +312,52 @@ def detect_module_from_df(df):
 
     return best_match or "loan"  # fallback
 
-def plot_correlation_heatmap(df, module=None):
+def plot_correlation_heatmap(df=None, module=None):
     st.subheader("🌡️ Correlation Heatmap")
 
-    if df is None or df.empty or df.isnull().all().all():
-        module = module or detect_module_from_df(df)
-        df = load_dataset_for_module(module)
-        if df is None:
-            st.warning("⚠️ Could not load a valid dataset.")
+    try:
+        # If nothing passed, load full dataset from module
+        if df is None or df.empty or df.shape[0] < 2:
+            if not module:
+                module = detect_module_from_df(df if df is not None else pd.DataFrame())
+            df = load_dataset_for_module(module)
+
+        if df is None or df.empty or df.shape[0] < 2:
+            st.warning("⚠️ Not enough data to plot correlation heatmap.")
             return
 
-    # Forcefully clean strings with commas or symbols (₹)
-    for col in df.columns:
-        df[col] = pd.to_numeric(
-            df[col].astype(str).str.replace(",", "").str.replace("₹", ""), errors="coerce"
+        # 🧹 Preprocessing
+        df = df.copy()
+        df = df.dropna(axis=1, how='all')
+        df = df.dropna()
+        df.columns = [c.strip() for c in df.columns]
+
+        if 'isFraud' in df.columns:
+            df = df.drop(columns=['isFraud'])
+
+        # Select numeric features only
+        input_features = df.select_dtypes(include=[np.number])
+        input_features = input_features.loc[:, input_features.nunique() > 1]
+
+        if input_features.shape[1] < 2:
+            st.warning("⚠️ Not enough numeric features for correlation heatmap.")
+            return
+
+        st.write("🧪 Final input features for correlation:", input_features.columns.tolist())
+
+        # ✅ Plot heatmap
+        corr = input_features.corr()
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.heatmap(
+            corr, annot=True, cmap='coolwarm',
+            vmin=-1, vmax=1, center=0,
+            fmt=".2f", linewidths=0.5, linecolor='gray'
         )
+        ax.set_title("Correlation Heatmap of Numeric Features")
+        st.pyplot(fig)
 
-    input_features = df.select_dtypes(include=[np.number])
-
-    # Drop target column if present
-    for target_like in ['isfraud', 'class', 'target', 'actual', 'label']:
-        if target_like in input_features.columns.str.lower():
-            input_features = input_features.drop(columns=[target_like], errors='ignore')
-
-    input_features = input_features.loc[:, input_features.nunique() > 1]
-
-    st.write("🧪 Final input features for correlation:", input_features.columns.tolist())
-    st.write("📊 Dtypes:", input_features.dtypes)
-
-    if input_features.shape[1] < 2:
-        st.warning("⚠️ Not enough numeric features for correlation heatmap.")
-        return
-
-    # ✅ Plot heatmap
-    corr = input_features.corr()
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.heatmap(
-        corr, annot=True, cmap='coolwarm',
-        vmin=-1, vmax=1, center=0,
-        fmt=".2f", linewidths=0.5, linecolor='gray'
-    )
-    ax.set_title("Correlation Heatmap of Numeric Features")
-    st.pyplot(fig)
+    except Exception as e:
+        st.error(f"❌ Correlation heatmap failed: {e}")
 
 
 # ------------------------------
