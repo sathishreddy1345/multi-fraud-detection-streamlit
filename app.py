@@ -61,9 +61,9 @@ st.sidebar.title("🧭 Navigation Panel")
 
 if "Model Info" not in st.session_state:
     st.session_state["Model Info"] = {
-        "💳 Credit Card": "RandomForest, XGBoost, CatBoost, LightGBM, Logistic Regression, IsolationForest",
+        "💳 Credit Card": "RandomForest, XGBoost, CatBoost, Logistic Regression, IsolationForest",
         "📱 PaySim": "Logistic Regression + IsolationForest",
-        "🏦 Loan": "LightGBM + Logistic Regression",
+        "🏦 Loan": "XGBOOST + Logistic Regression",
         "🚗 Insurance": "CatBoost + Random Forest"
     }
 
