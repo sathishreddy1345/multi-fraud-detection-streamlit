@@ -373,7 +373,6 @@ def get_model_description(model_key):
     descriptions = {
         "rf": "🌲 **Random Forest**: Ensemble of decision trees.",
         "xgb": "🚀 **XGBoost**: Gradient boosting framework.",
-        "lgbm": "🔆 **LightGBM**: Fast and scalable boosting.",
         "cat": "🐱 **CatBoost**: Handles categorical data well.",
         "lr": "📐 **Logistic Regression**: Simple and interpretable.",
         "iso": "🚨 **Isolation Forest**: Detects outliers in data."
