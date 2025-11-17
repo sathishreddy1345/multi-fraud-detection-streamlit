@@ -168,6 +168,36 @@ if selected_tab in fraud_modules:
             st.error("❌ No models were able to make predictions.")
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
+            
+                        # =====================================
+            # ⭐ REAL VARIANCE FROM MODEL PREDICTIONS
+            # =====================================
+            prediction_df = pd.DataFrame()
+            
+            # Extract per-row predicted scores
+            for m in model_scores.keys():
+                col = f"{m}_score"
+                if col in processed.columns:
+                    prediction_df[m] = processed[col].values
+            
+            # If no per-row scores found, fallback
+            if prediction_df.empty:
+                variances = np.ones(len(model_scores))
+            else:
+                variances = prediction_df.var().values + 1e-9  # avoid divide-by-zero
+            
+            # Inverse-variance weight (stable models get higher weight)
+            weights = (1/variances) / np.sum(1/variances)
+            
+            # Boosted normalized scores
+            model_vals = np.array(list(model_scores.values()))
+            norm_vals = (model_vals - model_vals.min()) / (model_vals.max() - model_vals.min() + 1e-9)
+            
+            alpha = 1.5
+            boosted = norm_vals ** alpha
+            
+            research_ensemble = float(np.sum(boosted * weights))
+
                                # ==========================================================
             # 🧠 BOOSTED WEIGHTED SOFT-VOTING ENSEMBLE (Research Method)
             # ==========================================================
