@@ -169,68 +169,35 @@ if selected_tab in fraud_modules:
             st.error("❌ No models were able to make predictions.")
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
+                    # ============================================================
+            # 🔥 Research-Grade Ensemble (Soft Voting, No Normalization)
             # ============================================================
-            # 🔥 Research Weighted Ensemble (Soft Voting + Stability)
-            # ============================================================
-            st.markdown("## 🔥 Research Weighted Ensemble Score")
             
-            # -------------------------------------------------
-            # STEP 1 — Build prediction dataframe safely
-            # -------------------------------------------------
-            prediction_df = pd.DataFrame()
+            import numpy as np
             
-            for m in model_scores.keys():
-                col = f"{m}_score"
-                if col in processed.columns:
-                    prediction_df[m] = processed[col].values
+            st.markdown("## 🔍 Research Ensemble Score (Soft Voting)")
             
-            # If no prediction_df (e.g., no per-row scores), use safe fallback
-            if prediction_df.empty:
-                variances = np.ones(len(model_scores))  # fallback
-            else:
-                # variance of predictions per model
-                variances = prediction_df.var().values + 1e-9
+            model_list = list(model_scores.keys())
+            scores_array = np.array(list(model_scores.values()))
             
-            # -------------------------------------------------
-            # STEP 2 — Stability-based weights
-            # -------------------------------------------------
-            weights = (1 / variances) / (1 / variances).sum()
+            # Equal weights for all models (standard)
+            weights = np.ones(len(model_list))
             
-            # -------------------------------------------------
-            # STEP 3 — Normalize model-level scores
-            # -------------------------------------------------
-            raw_scores = np.array(list(model_scores.values()))
-            norm_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
+            # Weighted soft vote
+            ensemble_research = np.sum(weights * scores_array) / np.sum(weights)
             
-            # -------------------------------------------------
-            # STEP 4 — Soft boosting
-            # -------------------------------------------------
-            alpha = 1.2     # Safe exponent — research recommended
-            boosted_scores = norm_scores ** alpha
+            st.metric("📌 Research Ensemble Fraud Likelihood", f"{ensemble_research * 100:.2f}%")
             
-            # -------------------------------------------------
-            # STEP 5 — Weighted ensemble
-            # -------------------------------------------------
-            ensemble_research = float((boosted_scores * weights).sum())
-            
-            st.metric("📌 Research Ensemble Likelihood", f"{ensemble_research * 100:.2f}%")
-            
-            # -------------------------------------------------
-            # STEP 6 — Table (research format)
-            # -------------------------------------------------
-            df_table = pd.DataFrame({
-                "Model": list(model_scores.keys()),
-                "Normalized Score": norm_scores,
-                "Boosted Score": boosted_scores,
-                "Variance": variances,
+            # Table for paper
+            df_w = pd.DataFrame({
+                "Model": model_list,
+                "Prediction Score": scores_array,
                 "Weight": weights
             })
             
-            st.markdown("### ⚖️ Model Weight Contribution")
-            
-            # Format only numeric columns
-            num_cols = ["Normalized Score", "Boosted Score", "Variance", "Weight"]
-            st.dataframe(df_table.style.format({col: "{:.4f}" for col in num_cols}))
+            st.markdown("### 📑 Ensemble Table (Use in Research Paper)")
+            st.dataframe(df_w.style.format({"Prediction Score": "{:.4f}", "Weight": "{:.2f}"}))
+
             
 
 
