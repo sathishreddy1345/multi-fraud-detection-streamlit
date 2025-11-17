@@ -5,9 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import warnings
-import numpy as np
-import pandas as pd
-
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*force_all_finite.*")
 
 # Fraud modules
@@ -136,7 +133,7 @@ if selected_tab in fraud_modules:
                 except:
                     df[col] = cleaned  # keep as string if not numeric
 
-        
+
         # Drop any remaining non-numeric or fully empty columns
         df = df.dropna(axis=1, how="all")
 
@@ -149,9 +146,7 @@ if selected_tab in fraud_modules:
                 time.sleep(1)
                 fn = function_map[selected_tab]
                 try:
-                    score, model_scores, scored_df = getattr(...)(df)
-                    processed = scored_df  # for compatibility with other visualizers
-
+                    score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
                     st.session_state["model_scores"] = model_scores
                     st.session_state["score"] = score
                     st.session_state["processed"] = processed
@@ -173,144 +168,20 @@ if selected_tab in fraud_modules:
             st.error("❌ No models were able to make predictions.")
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
-            
-                               # =====================================
-# ⭐ REAL VARIANCE FROM MODEL PREDICTIONS
-# =====================================
-            
-            import numpy as np
-            import pandas as pd
-            
-            st.markdown("## 🔥 Boosted Weighted Ensemble (Research Method)")
-            
-            prediction_df = pd.DataFrame()
-            
-            # Use 'processed' because it contains *_score columns
-            for m in model_scores.keys():
-                col = f"{m}_score"
-                if col in processed.columns:
-                    prediction_df[m] = processed[col].values
-            
-            # Fallback
-            if prediction_df.empty:
-                variances = np.ones(len(model_scores))
-            else:
-                variances = prediction_df.var().values + 1e-9
-            
-            # Weighting
-            weights = (1 / variances) / np.sum(1 / variances)
-            
-            # Normalize
-            model_vals = np.array(list(model_scores.values()))
-            norm_vals = (model_vals - model_vals.min()) / (model_vals.max() - model_vals.min() + 1e-9)
-            
-            # Boost
-            alpha = 1.5
-            boosted = norm_vals ** alpha
-            
-            # Ensemble
-            research_ensemble = float(np.sum(boosted * weights))
-            
-            st.metric("📌 Boosted Ensemble Likelihood", f"{research_ensemble * 100:.2f}%")
-            
-            df_w = pd.DataFrame({
-                "Model": list(model_scores.keys()),
-                "Normalized Score": norm_vals,
-                "Boosted Score": boosted,
-                "Variance": variances,
-                "Weight": weights
-            })
-            
-            st.markdown("### ⚖️ Model Weight Contribution")
-            
-            numeric_cols = df_w.select_dtypes(include=[float, int]).columns
-            st.dataframe(df_w.style.format({col: "{:.4f}" for col in numeric_cols}))
 
-
-
-                               # ==========================================================
-            # 🧠 BOOSTED WEIGHTED SOFT-VOTING ENSEMBLE (Research Method)
-            # ==========================================================
+            # -------------------------------------------------
+            # 🧮 Ensemble Score (Weighted or Average)
+            # -------------------------------------------------
+            st.markdown("### 🔰 Ensemble Score (Combined Model Confidence)")
             
-            st.markdown("## 🔥 Boosted Weighted Ensemble (Research Method)")
+            # Simple average ensemble (safe for all domains)
+            ensemble_score = sum(model_scores.values()) / len(model_scores)
             
-            import numpy as np
-            import pandas as pd
+            st.metric("Ensemble Fraud Likelihood", f"{ensemble_score * 100:.2f}%")
             
-            model_vals = np.array(list(model_scores.values()))
-            
-            # 1. Normalize
-            norm_vals = (model_vals - model_vals.min()) / (model_vals.max() - model_vals.min() + 1e-9)
-            
-            # 2. TRUE variance from predictions
-            model_variances = []
-            
-            for m in model_scores.keys():
-                col = f"{m}_score"
-                if col in processed.columns:
-                    model_variances.append(np.var(processed[col].values) + 1e-9)
-                else:
-                    model_variances.append(1.0)  # fallback
-            
-            model_variances = np.array(model_variances)
-            
-            # 3. Stability-based weights (inverse variance)
-            weights = (1 / model_variances) / np.sum(1 / model_variances)
-            
-            # 4. Boost
-            alpha = 1.5
-            boosted = norm_vals ** alpha
-            
-            # 5. Weighted ensemble
-            research_ensemble = float(np.sum(boosted * weights))
-            
-            st.metric("📌 Boosted Ensemble Likelihood", f"{research_ensemble*100:.2f}%")
-            
-            # Create display table
-            df_w = pd.DataFrame({
-                "Model": list(model_scores.keys()),
-                "Normalized Score": norm_vals,
-                "Boosted Score": boosted,
-                "Variance": model_variances,
-                "Weight": weights
-            })
-            
-            st.markdown("### ⚖️ Model Weight Contribution")
-            
-            numeric_cols = df_w.select_dtypes(include=['float', 'int']).columns
-            st.dataframe(df_w.style.format({col: "{:.4f}" for col in numeric_cols}))
-
-
-
-                        # ==========================================================
-            # 📋 Per-Model Metrics (Accuracy, Precision, Recall, F1, AUC)
-            # ==========================================================
-            
-            if "actual" in df.columns:
-                from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-            
-                y_true = df["actual"]
-                metrics_rows = []
-            
-                for m, p in model_scores.items():
-                    pred = (p > 0.5).astype(int)
-                    try:
-                        auc = roc_auc_score(y_true, [p] * len(y_true))
-                    except: auc = None
-            
-                    metrics_rows.append({
-                        "Model": m,
-                        "Accuracy": accuracy_score(y_true, pred),
-                        "Precision": precision_score(y_true, pred, zero_division=0),
-                        "Recall": recall_score(y_true, pred, zero_division=0),
-                        "F1 Score": f1_score(y_true, pred, zero_division=0),
-                        "AUC-ROC": auc
-                    })
-            
-                st.markdown("### 📘 Per-Model Classification Metrics")
-                st.dataframe(pd.DataFrame(metrics_rows).style.format("{:.4f}"))
-
-
+            # Show ensemble bar comparison
+            from utils.visualizer import plot_ensemble_score
+            plot_ensemble_score(model_scores, ensemble_score)
 
             if selected_model is None:
                 selected_model = next(iter(model_scores))  # fallback
@@ -345,7 +216,7 @@ if selected_tab in fraud_modules:
 
                 plot_radar(model_scores)
                 plot_boxplot(processed)
-                
+
 
                 plot_correlation_heatmap(df)
                 download_model_report(processed)
