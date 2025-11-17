@@ -187,8 +187,8 @@ if selected_tab in fraud_modules:
             
             for m in model_scores.keys():
                 col = f"{m}_score"
-                if col in scored_df.columns:
-                    model_variances.append(np.var(scored_df[col].values) + 1e-9)
+                if col in processed.columns:
+                    model_variances.append(np.var(processed[col].values) + 1e-9)
                 else:
                     model_variances.append(1.0)  # fallback
             
