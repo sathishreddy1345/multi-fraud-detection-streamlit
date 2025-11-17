@@ -183,6 +183,53 @@ if selected_tab in fraud_modules:
             from utils.visualizer import plot_ensemble_score
             plot_ensemble_score(model_scores, ensemble_score)
 
+
+            # ===============================================
+# 📘 RESEARCH-PAPER METRICS SECTION
+# ===============================================
+
+st.markdown("## 📊 Research-Grade Model Evaluation")
+
+df_scores = pd.DataFrame(list(model_scores.items()), columns=["Model", "Score"])
+st.markdown("### 🔍 Model-wise Scores")
+st.dataframe(df_scores)
+
+# Weighted ensemble
+st.markdown("### ⚖️ Weighted Ensemble Formula")
+weights = {m: s / sum(model_scores.values()) for m, s in model_scores.items()}
+weighted_score = sum(model_scores[m] * weights[m] for m in model_scores)
+
+st.write("**Weighted Ensemble Score:**", round(weighted_score, 4))
+st.write("**Model Weights:**")
+st.json(weights)
+
+# Classification metrics ONLY if ground truth exists
+if "actual" in df.columns:
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+
+    y_true = df["actual"]
+    y_pred = (ensemble_score > 0.5).astype(int)
+
+    metrics = {
+        "Accuracy": accuracy_score(y_true, y_pred),
+        "Precision": precision_score(y_true, y_pred, zero_division=0),
+        "Recall": recall_score(y_true, y_pred, zero_division=0),
+        "F1 Score": f1_score(y_true, y_pred, zero_division=0)
+    }
+
+    try:
+        metrics["AUC-ROC"] = roc_auc_score(y_true, [ensemble_score] * len(y_true))
+    except:
+        metrics["AUC-ROC"] = "N/A"
+
+    st.markdown("### 📐 Classification Metrics")
+    st.json(metrics)
+
+    st.markdown("### 📝 Research Table (Copy for Paper)")
+    df_metrics = pd.DataFrame(metrics, index=["Score"])
+    st.dataframe(df_metrics.style.highlight_max(axis=1))
+
+
             if selected_model is None:
                 selected_model = next(iter(model_scores))  # fallback
 
