@@ -168,66 +168,107 @@ if selected_tab in fraud_modules:
             st.error("❌ No models were able to make predictions.")
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
-
-            # -------------------------------------------------
-            # 🧮 Ensemble Score (Weighted or Average)
-            # -------------------------------------------------
-            st.markdown("### 🔰 Ensemble Score (Combined Model Confidence)")
+        
+                       # ================================================================
+            # 🧠 RESEARCH-GRADE FRAUD MODEL METRICS + ENSEMBLE FUSION
+            # ================================================================
             
-            # Simple average ensemble (safe for all domains)
-            ensemble_score = sum(model_scores.values()) / len(model_scores)
+            st.markdown("## 📊 Research-Grade Fraud Detection Evaluation")
             
-            st.metric("Ensemble Fraud Likelihood", f"{ensemble_score * 100:.2f}%")
+            # -----------------------------------------
+            # 1️⃣ Model-wise Score Table
+            # -----------------------------------------
+            df_scores = pd.DataFrame(list(model_scores.items()), columns=["Model", "Avg Score"])
+            st.markdown("### 🔍 Model-wise Raw Scores")
+            st.dataframe(df_scores.style.format({"Avg Score": "{:.4f}"}))
             
-            # Show ensemble bar comparison
-            from utils.visualizer import plot_ensemble_score
-            plot_ensemble_score(model_scores, ensemble_score)
-
-
-                        # ===============================================
-            # 📘 RESEARCH-PAPER METRICS SECTION
-            # ===============================================
+            # -----------------------------------------
+            # 2️⃣ Normalized Soft Voting Ensemble (Best Formula)
+            # -----------------------------------------
+            st.markdown("### 🧮 Research Ensemble Score (Normalized Soft Voting)")
             
-            st.markdown("## 📊 Research-Grade Model Evaluation")
+            import numpy as np
             
-            df_scores = pd.DataFrame(list(model_scores.items()), columns=["Model", "Score"])
-            st.markdown("### 🔍 Model-wise Scores")
-            st.dataframe(df_scores)
+            vals = np.array(list(model_scores.values()))
+            norm_vals = (vals - vals.min()) / (vals.max() - vals.min() + 1e-9)  # normalization
             
-            # Weighted ensemble
-            st.markdown("### ⚖️ Weighted Ensemble Formula")
-            weights = {m: s / sum(model_scores.values()) for m, s in model_scores.items()}
-            weighted_score = sum(model_scores[m] * weights[m] for m in model_scores)
+            # Variance-based weighting (stable models = higher weight)
+            variances = np.array([np.var([v]) + 1e-9 for v in vals])   # add epsilon for isolation forest
+            weights = (1/variances) / np.sum(1/variances)
             
-            st.write("**Weighted Ensemble Score:**", round(weighted_score, 4))
-            st.write("**Model Weights:**")
-            st.json(weights)
+            research_ensemble = float(np.sum(norm_vals * weights))
             
-            # Classification metrics ONLY if ground truth exists
+            st.metric("📌 Final Research Ensemble Likelihood", f"{research_ensemble*100:.2f}%")
+            
+            # Show ensemble weight distribution
+            ensemble_table = pd.DataFrame({
+                "Model": list(model_scores.keys()),
+                "Normalized Score": norm_vals,
+                "Weight": weights
+            })
+            st.markdown("### ⚖️ Model Weights (Based on Stability)")
+            st.dataframe(ensemble_table.style.format({"Normalized Score": "{:.4f}", "Weight": "{:.4f}"}))
+            
+            # -----------------------------------------
+            # 3️⃣ Per-Model Classification Metrics
+            # -----------------------------------------
             if "actual" in df.columns:
+            
                 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
             
                 y_true = df["actual"]
-                y_pred = (ensemble_score > 0.5).astype(int)
             
-                metrics = {
-                    "Accuracy": accuracy_score(y_true, y_pred),
-                    "Precision": precision_score(y_true, y_pred, zero_division=0),
-                    "Recall": recall_score(y_true, y_pred, zero_division=0),
-                    "F1 Score": f1_score(y_true, y_pred, zero_division=0)
+                metrics_rows = []
+            
+                for model_name, model_value in model_scores.items():
+            
+                    # convert aggregate model score into binary predictions
+                    y_pred_single = (model_value > 0.5).astype(int)
+            
+                    # compute metrics
+                    try:
+                        auc = roc_auc_score(y_true, [model_value] * len(y_true))
+                    except:
+                        auc = None
+            
+                    metrics_rows.append({
+                        "Model": model_name,
+                        "Accuracy": accuracy_score(y_true, y_pred_single),
+                        "Precision": precision_score(y_true, y_pred_single, zero_division=0),
+                        "Recall": recall_score(y_true, y_pred_single, zero_division=0),
+                        "F1 Score": f1_score(y_true, y_pred_single, zero_division=0),
+                        "AUC-ROC": auc
+                    })
+            
+                metrics_df = pd.DataFrame(metrics_rows)
+            
+                st.markdown("### 📘 Per-Model Classification Metrics")
+                st.dataframe(metrics_df.style.format({
+                    "Accuracy": "{:.4f}",
+                    "Precision": "{:.4f}",
+                    "Recall": "{:.4f}",
+                    "F1 Score": "{:.4f}",
+                    "AUC-ROC": "{:.4f}"
+                }).highlight_max(axis=0))
+            
+            # -----------------------------------------
+            # 4️⃣ Ensemble Classification Metrics
+            # -----------------------------------------
+            if "actual" in df.columns:
+            
+                # Final ensemble prediction
+                ensemble_pred = (research_ensemble > 0.5).astype(int)
+            
+                ensemble_metrics = {
+                    "Accuracy": accuracy_score(y_true, ensemble_pred),
+                    "Precision": precision_score(y_true, ensemble_pred, zero_division=0),
+                    "Recall": recall_score(y_true, ensemble_pred, zero_division=0),
+                    "F1 Score": f1_score(y_true, ensemble_pred, zero_division=0)
                 }
             
-                try:
-                    metrics["AUC-ROC"] = roc_auc_score(y_true, [ensemble_score] * len(y_true))
-                except:
-                    metrics["AUC-ROC"] = "N/A"
-            
-                st.markdown("### 📐 Classification Metrics")
-                st.json(metrics)
-            
-                st.markdown("### 📝 Research Table (Copy for Paper)")
-                df_metrics = pd.DataFrame(metrics, index=["Score"])
-                st.dataframe(df_metrics.style.highlight_max(axis=1))
+                st.markdown("### 🏆 Final Ensemble Model Metrics")
+                st.json(ensemble_metrics)
+
 
 
             if selected_model is None:
