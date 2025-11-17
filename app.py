@@ -216,35 +216,35 @@ if selected_tab in fraud_modules:
             )
             
             # FIX: Force numeric ground truth
-            y_true = processed["actual"].astype(int).to_numpy()
-            
-            # FIX: Expand ensemble prediction and force int dtype
-            y_pred_ensemble = np.array(
-                [1 if ensemble_research > 0.5 else 0] * len(y_true),
-                dtype=int
-            )
-            
-            # FIX: Guarantee equal shape
-            if len(y_true) != len(y_pred_ensemble):
-                raise ValueError("Prediction and ground truth length mismatch.")
-            
-            metrics_ensemble = {
-                "Accuracy": accuracy_score(y_true, y_pred_ensemble),
-                "Precision": precision_score(y_true, y_pred_ensemble, zero_division=0),
-                "Recall": recall_score(y_true, y_pred_ensemble, zero_division=0),
-                "F1 Score": f1_score(y_true, y_pred_ensemble, zero_division=0),
-            }
-            
-            # AUC
-            try:
-                metrics_ensemble["AUC-ROC"] = roc_auc_score(
-                    y_true,
-                    np.array([ensemble_research] * len(y_true), dtype=float)
+                y_true = processed["actual"].astype(int).to_numpy()
+                
+                # FIX: Expand ensemble prediction and force int dtype
+                y_pred_ensemble = np.array(
+                    [1 if ensemble_research > 0.5 else 0] * len(y_true),
+                    dtype=int
                 )
-            except:
-                metrics_ensemble["AUC-ROC"] = "N/A"
-            
-            st.json(metrics_ensemble)
+                
+                # FIX: Guarantee equal shape
+                if len(y_true) != len(y_pred_ensemble):
+                    raise ValueError("Prediction and ground truth length mismatch.")
+                
+                metrics_ensemble = {
+                    "Accuracy": accuracy_score(y_true, y_pred_ensemble),
+                    "Precision": precision_score(y_true, y_pred_ensemble, zero_division=0),
+                    "Recall": recall_score(y_true, y_pred_ensemble, zero_division=0),
+                    "F1 Score": f1_score(y_true, y_pred_ensemble, zero_division=0),
+                }
+                
+                # AUC
+                try:
+                    metrics_ensemble["AUC-ROC"] = roc_auc_score(
+                        y_true,
+                        np.array([ensemble_research] * len(y_true), dtype=float)
+                    )
+                except:
+                    metrics_ensemble["AUC-ROC"] = "N/A"
+                
+                st.json(metrics_ensemble)
 
             
                 # ---------------------------------------------------------
