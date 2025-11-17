@@ -198,6 +198,104 @@ if selected_tab in fraud_modules:
             st.markdown("### 📑 Ensemble Table (Use in Research Paper)")
             st.dataframe(df_w.style.format({"Prediction Score": "{:.4f}", "Weight": "{:.2f}"}))
 
+
+
+                        # ============================================================
+            # 📊 Full Research Evaluation Block (All Metrics)
+            # ============================================================
+            
+            st.markdown("---")
+            st.markdown("## 🧪 Research Evaluation Metrics")
+            
+            if "actual" not in processed.columns:
+                st.warning("⚠️ Ground truth labels ('actual') were not found. Metrics cannot be computed.")
+            else:
+                from sklearn.metrics import (
+                    accuracy_score, precision_score, recall_score,
+                    f1_score, roc_auc_score, confusion_matrix
+                )
+            
+                # -------------------------
+                # Ground truth
+                # -------------------------
+                y_true = processed["actual"].astype(int)
+            
+                # -------------------------
+                # Ensemble Prediction (threshold 0.5)
+                # -------------------------
+                y_pred_ensemble = (ensemble_research > 0.5).astype(int)
+            
+                # -------------------------
+                # Compute metrics
+                # -------------------------
+                metrics_ensemble = {
+                    "Accuracy": accuracy_score(y_true, y_pred_ensemble),
+                    "Precision": precision_score(y_true, y_pred_ensemble, zero_division=0),
+                    "Recall": recall_score(y_true, y_pred_ensemble, zero_division=0),
+                    "F1 Score": f1_score(y_true, y_pred_ensemble, zero_division=0)
+                }
+            
+                # AUC only if probability available
+                try:
+                    metrics_ensemble["AUC-ROC"] = roc_auc_score(y_true, np.ones(len(y_true)) * ensemble_research)
+                except:
+                    metrics_ensemble["AUC-ROC"] = "N/A"
+            
+                st.markdown("### 📘 Ensemble Metrics")
+                st.json(metrics_ensemble)
+            
+                # ---------------------------------------------------------
+                # 🔥 Model-wise Research Metrics (Optional But Valuable)
+                # ---------------------------------------------------------
+                st.markdown("### 🔬 Model-wise Metrics")
+            
+                model_metrics_table = []
+            
+                for m, score_val in model_scores.items():
+                    y_pred_model = (score_val > 0.5).astype(int)
+            
+                    metric_row = {
+                        "Model": m,
+                        "Accuracy": accuracy_score(y_true, y_pred_model),
+                        "Precision": precision_score(y_true, y_pred_model, zero_division=0),
+                        "Recall": recall_score(y_true, y_pred_model, zero_division=0),
+                        "F1 Score": f1_score(y_true, y_pred_model, zero_division=0)
+                    }
+            
+                    try:
+                        metric_row["AUC-ROC"] = roc_auc_score(y_true, np.ones(len(y_true)) * score_val)
+                    except:
+                        metric_row["AUC-ROC"] = "N/A"
+            
+                    model_metrics_table.append(metric_row)
+            
+                df_model_metrics = pd.DataFrame(model_metrics_table)
+                st.dataframe(df_model_metrics.style.format("{:.4f}"))
+            
+                # ---------------------------------------------------------
+                # 📊 Confusion Matrix for Ensemble
+                # ---------------------------------------------------------
+                st.markdown("### 📉 Ensemble Confusion Matrix")
+            
+                cm = confusion_matrix(y_true, y_pred_ensemble)
+                cm_df = pd.DataFrame(cm, index=["Actual 0", "Actual 1"], columns=["Pred 0", "Pred 1"])
+            
+                st.dataframe(cm_df.style.background_gradient(cmap="rocket_r"))
+            
+                # ---------------------------------------------------------
+                # 📑 Downloadable Table for Research Paper
+                # ---------------------------------------------------------
+                st.markdown("### 📥 Download Research Metrics Table")
+                
+                final_table = df_model_metrics.copy()
+                final_table.loc[len(final_table)] = ["Ensemble"] + list(metrics_ensemble.values())
+            
+                st.dataframe(final_table.style.format("{:.4f}"))
+            
+                csv = final_table.to_csv(index=False)
+                st.download_button("📄 Download Metrics as CSV", csv, "resear_
+
+
             
 
 
