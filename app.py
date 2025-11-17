@@ -327,7 +327,9 @@ if selected_tab in fraud_modules:
                 # Confusion Matrix
                 if 'actual' in df.columns:
                     y_true = df['actual']
-                    y_pred = [1 if model_scores[selected_model] > 0.5 else 0] * len(df)
+                    # Ensemble prediction for each row (same value repeated)
+                    y_pred_ensemble = np.array([1 if ensemble_research > 0.5 else 0] * len(y_true))
+
                     plot_confusion_report(y_true, y_pred)
 
                 plot_radar(model_scores)
