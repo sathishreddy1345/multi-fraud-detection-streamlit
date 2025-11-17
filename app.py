@@ -203,7 +203,13 @@ if selected_tab in fraud_modules:
                 "Boosted Score": boosted,
                 "Weight": weights
             })
-            st.dataframe(df_w.style.format("{:.4f}"))
+            # Safe formatting only for numeric columns
+            numeric_cols = df_w.select_dtypes(include=['float', 'int']).columns
+            
+            st.dataframe(
+                df_w.style.format({col: "{:.4f}" for col in numeric_cols})
+            )
+
 
                         # ==========================================================
             # 📋 Per-Model Metrics (Accuracy, Precision, Recall, F1, AUC)
