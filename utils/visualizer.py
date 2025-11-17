@@ -35,6 +35,29 @@ def load_dataset_for_module(module_name):
         return None
 
 
+# -------------------------------------------------
+# 📊 Ensemble Score Visualization
+# -------------------------------------------------
+def plot_ensemble_score(model_scores, ensemble_score):
+    st.subheader("📊 Ensemble vs Individual Models")
+
+    labels = list(model_scores.keys()) + ["Ensemble"]
+    values = list(model_scores.values()) + [ensemble_score]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.barplot(x=labels, y=values, palette="viridis", ax=ax)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("Fraud Likelihood Score")
+    ax.set_title("Model Comparison Including Ensemble Score")
+
+    # Annotate bars
+    for i, v in enumerate(values):
+        ax.text(i, v + 0.02, f"{v:.2f}", ha='center', fontsize=10)
+
+    st.pyplot(fig)
+
+
+
 # ------------------------------
 # 📊 Bar Chart
 # ------------------------------
