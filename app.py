@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import warnings
+import numpy as np
+import pandas as pd
+
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*force_all_finite.*")
 
 # Fraud modules
