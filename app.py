@@ -168,47 +168,58 @@ if selected_tab in fraud_modules:
             st.error("❌ No models were able to make predictions.")
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
-                    # ==========================================================
+                               # ==========================================================
             # 🧠 BOOSTED WEIGHTED SOFT-VOTING ENSEMBLE (Research Method)
             # ==========================================================
+            
+            st.markdown("## 🔥 Boosted Weighted Ensemble (Research Method)")
             
             import numpy as np
             import pandas as pd
             
-            st.markdown("## 🔥 Boosted Weighted Ensemble (Research Method)")
-            
             model_vals = np.array(list(model_scores.values()))
             
-            # 1. Normalize model outputs
+            # 1. Normalize
             norm_vals = (model_vals - model_vals.min()) / (model_vals.max() - model_vals.min() + 1e-9)
             
-            # 2. Compute variance-based stable weights
-            variances = np.array([np.var([v]) + 1e-9 for v in model_vals])
-            weights = (1/variances) / np.sum(1/variances)
+            # 2. TRUE variance from predictions
+            model_variances = []
             
-            # 3. Boost using exponent α (recommended 1.5)
+            for m in model_scores.keys():
+                col = f"{m}_score"
+                if col in scored_df.columns:
+                    model_variances.append(np.var(scored_df[col].values) + 1e-9)
+                else:
+                    model_variances.append(1.0)  # fallback
+            
+            model_variances = np.array(model_variances)
+            
+            # 3. Stability-based weights (inverse variance)
+            weights = (1 / model_variances) / np.sum(1 / model_variances)
+            
+            # 4. Boost
             alpha = 1.5
             boosted = norm_vals ** alpha
             
-            # 4. Final boosted weighted ensemble
+            # 5. Weighted ensemble
             research_ensemble = float(np.sum(boosted * weights))
             
             st.metric("📌 Boosted Ensemble Likelihood", f"{research_ensemble*100:.2f}%")
             
-            # Show model weights
-            st.markdown("### ⚖️ Model Weight Contribution")
+            # Create display table
             df_w = pd.DataFrame({
                 "Model": list(model_scores.keys()),
                 "Normalized Score": norm_vals,
                 "Boosted Score": boosted,
+                "Variance": model_variances,
                 "Weight": weights
             })
-            # Safe formatting only for numeric columns
-            numeric_cols = df_w.select_dtypes(include=['float', 'int']).columns
             
-            st.dataframe(
-                df_w.style.format({col: "{:.4f}" for col in numeric_cols})
-            )
+            st.markdown("### ⚖️ Model Weight Contribution")
+            
+            numeric_cols = df_w.select_dtypes(include=['float', 'int']).columns
+            st.dataframe(df_w.style.format({col: "{:.4f}" for col in numeric_cols}))
+
 
 
                         # ==========================================================
