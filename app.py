@@ -149,7 +149,9 @@ if selected_tab in fraud_modules:
                 time.sleep(1)
                 fn = function_map[selected_tab]
                 try:
-                    score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
+                    score, model_scores, scored_df = getattr(...)(df)
+                    processed = scored_df  # for compatibility with other visualizers
+
                     st.session_state["model_scores"] = model_scores
                     st.session_state["score"] = score
                     st.session_state["processed"] = processed
