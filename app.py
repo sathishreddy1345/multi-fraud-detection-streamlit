@@ -174,9 +174,9 @@ if selected_tab in fraud_modules:
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
             
-                                  # =====================================
-            # ⭐ REAL VARIANCE FROM MODEL PREDICTIONS
-            # =====================================
+                               # =====================================
+# ⭐ REAL VARIANCE FROM MODEL PREDICTIONS
+# =====================================
             
             import numpy as np
             import pandas as pd
@@ -185,34 +185,34 @@ if selected_tab in fraud_modules:
             
             prediction_df = pd.DataFrame()
             
-            # Use scored_df (contains rf_score, xgb_score, etc.)
+            # Use 'processed' because it contains *_score columns
             for m in model_scores.keys():
                 col = f"{m}_score"
-                if col in scored_df.columns:
-                    prediction_df[m] = scored_df[col].values
+                if col in processed.columns:
+                    prediction_df[m] = processed[col].values
             
-            # Fallback if no prediction distribution is available
+            # Fallback
             if prediction_df.empty:
                 variances = np.ones(len(model_scores))
             else:
                 variances = prediction_df.var().values + 1e-9
             
-            # Inverse-variance weighting
+            # Weighting
             weights = (1 / variances) / np.sum(1 / variances)
             
-            # Normalized & boosted scores
+            # Normalize
             model_vals = np.array(list(model_scores.values()))
             norm_vals = (model_vals - model_vals.min()) / (model_vals.max() - model_vals.min() + 1e-9)
             
+            # Boost
             alpha = 1.5
             boosted = norm_vals ** alpha
             
-            # Final boosted ensemble
+            # Ensemble
             research_ensemble = float(np.sum(boosted * weights))
             
             st.metric("📌 Boosted Ensemble Likelihood", f"{research_ensemble * 100:.2f}%")
             
-            # Display table
             df_w = pd.DataFrame({
                 "Model": list(model_scores.keys()),
                 "Normalized Score": norm_vals,
@@ -225,6 +225,7 @@ if selected_tab in fraud_modules:
             
             numeric_cols = df_w.select_dtypes(include=[float, int]).columns
             st.dataframe(df_w.style.format({col: "{:.4f}" for col in numeric_cols}))
+
 
 
                                # ==========================================================
