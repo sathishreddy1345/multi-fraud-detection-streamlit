@@ -168,15 +168,14 @@ if selected_tab in fraud_modules:
             st.error("❌ No models were able to make predictions.")
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
-
-                        # ============================================================
-            # 🔥 Research-Proven Weighted Ensemble (Soft Voting + Stability)
+            # ============================================================
+            # 🔥 Research Weighted Ensemble (Soft Voting + Stability)
             # ============================================================
             st.markdown("## 🔥 Research Weighted Ensemble Score")
             
-            # ---------------------------------------
-            # STEP 1: Build prediction dataframe
-            # ---------------------------------------
+            # -------------------------------------------------
+            # STEP 1 — Build prediction dataframe safely
+            # -------------------------------------------------
             prediction_df = pd.DataFrame()
             
             for m in model_scores.keys():
@@ -184,44 +183,40 @@ if selected_tab in fraud_modules:
                 if col in processed.columns:
                     prediction_df[m] = processed[col].values
             
-            # If missing, fallback variance = 1
+            # If no prediction_df (e.g., no per-row scores), use safe fallback
             if prediction_df.empty:
-                variances = np.ones(len(model_scores))
+                variances = np.ones(len(model_scores))  # fallback
             else:
-                # Variance across row predictions (model stability)
+                # variance of predictions per model
                 variances = prediction_df.var().values + 1e-9
             
-            # ---------------------------------------
-            # STEP 2: Stability Weighting (Safe)
-            # ---------------------------------------
-            # More stable → higher weight
+            # -------------------------------------------------
+            # STEP 2 — Stability-based weights
+            # -------------------------------------------------
             weights = (1 / variances) / (1 / variances).sum()
             
-            # ---------------------------------------
-            # STEP 3: Normalization of model scores
-            # ---------------------------------------
+            # -------------------------------------------------
+            # STEP 3 — Normalize model-level scores
+            # -------------------------------------------------
             raw_scores = np.array(list(model_scores.values()))
             norm_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
             
-            # ---------------------------------------
-            # STEP 4: Soft Boosting (Research-safe)
-            # ---------------------------------------
-            alpha = 1.2   # Safe exponent (doesn't distort small models)
+            # -------------------------------------------------
+            # STEP 4 — Soft boosting
+            # -------------------------------------------------
+            alpha = 1.2     # Safe exponent — research recommended
             boosted_scores = norm_scores ** alpha
             
-            # ---------------------------------------
-            # STEP 5: Weighted Voting
-            # ---------------------------------------
+            # -------------------------------------------------
+            # STEP 5 — Weighted ensemble
+            # -------------------------------------------------
             ensemble_research = float((boosted_scores * weights).sum())
             
-            # ---------------------------------------
-            # Display Results
-            # ---------------------------------------
-            st.metric("📌 Research Ensemble Likelihood", f"{ensemble_research*100:.2f}%")
+            st.metric("📌 Research Ensemble Likelihood", f"{ensemble_research * 100:.2f}%")
             
-            # ---------------------------------------
-            # STEP 6: Show contribution table
-            # ---------------------------------------
+            # -------------------------------------------------
+            # STEP 6 — Table (research format)
+            # -------------------------------------------------
             df_table = pd.DataFrame({
                 "Model": list(model_scores.keys()),
                 "Normalized Score": norm_scores,
@@ -231,9 +226,11 @@ if selected_tab in fraud_modules:
             })
             
             st.markdown("### ⚖️ Model Weight Contribution")
-            numeric_cols = df_table.select_dtypes(include=[float, int]).columns
             
-            st.dataframe(df_table.style.format({col: "{:.4f}" for col in numeric_cols}))
+            # Format only numeric columns
+            num_cols = ["Normalized Score", "Boosted Score", "Variance", "Weight"]
+            st.dataframe(df_table.style.format({col: "{:.4f}" for col in num_cols}))
+            
 
 
             if selected_model is None:
