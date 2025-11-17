@@ -169,19 +169,72 @@ if selected_tab in fraud_modules:
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
 
-            # -------------------------------------------------
-            # 🧮 Ensemble Score (Weighted or Average)
-            # -------------------------------------------------
-            st.markdown("### 🔰 Ensemble Score (Combined Model Confidence)")
+                        # ============================================================
+            # 🔥 Research-Proven Weighted Ensemble (Soft Voting + Stability)
+            # ============================================================
+            st.markdown("## 🔥 Research Weighted Ensemble Score")
             
-            # Simple average ensemble (safe for all domains)
-            ensemble_score = sum(model_scores.values()) / len(model_scores)
+            # ---------------------------------------
+            # STEP 1: Build prediction dataframe
+            # ---------------------------------------
+            prediction_df = pd.DataFrame()
             
-            st.metric("Ensemble Fraud Likelihood", f"{ensemble_score * 100:.2f}%")
+            for m in model_scores.keys():
+                col = f"{m}_score"
+                if col in processed.columns:
+                    prediction_df[m] = processed[col].values
             
-            # Show ensemble bar comparison
-            from utils.visualizer import plot_ensemble_score
-            plot_ensemble_score(model_scores, ensemble_score)
+            # If missing, fallback variance = 1
+            if prediction_df.empty:
+                variances = np.ones(len(model_scores))
+            else:
+                # Variance across row predictions (model stability)
+                variances = prediction_df.var().values + 1e-9
+            
+            # ---------------------------------------
+            # STEP 2: Stability Weighting (Safe)
+            # ---------------------------------------
+            # More stable → higher weight
+            weights = (1 / variances) / (1 / variances).sum()
+            
+            # ---------------------------------------
+            # STEP 3: Normalization of model scores
+            # ---------------------------------------
+            raw_scores = np.array(list(model_scores.values()))
+            norm_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
+            
+            # ---------------------------------------
+            # STEP 4: Soft Boosting (Research-safe)
+            # ---------------------------------------
+            alpha = 1.2   # Safe exponent (doesn't distort small models)
+            boosted_scores = norm_scores ** alpha
+            
+            # ---------------------------------------
+            # STEP 5: Weighted Voting
+            # ---------------------------------------
+            ensemble_research = float((boosted_scores * weights).sum())
+            
+            # ---------------------------------------
+            # Display Results
+            # ---------------------------------------
+            st.metric("📌 Research Ensemble Likelihood", f"{ensemble_research*100:.2f}%")
+            
+            # ---------------------------------------
+            # STEP 6: Show contribution table
+            # ---------------------------------------
+            df_table = pd.DataFrame({
+                "Model": list(model_scores.keys()),
+                "Normalized Score": norm_scores,
+                "Boosted Score": boosted_scores,
+                "Variance": variances,
+                "Weight": weights
+            })
+            
+            st.markdown("### ⚖️ Model Weight Contribution")
+            numeric_cols = df_table.select_dtypes(include=[float, int]).columns
+            
+            st.dataframe(df_table.style.format({col: "{:.4f}" for col in numeric_cols}))
+
 
             if selected_model is None:
                 selected_model = next(iter(model_scores))  # fallback
