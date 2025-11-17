@@ -293,7 +293,7 @@ if selected_tab in fraud_modules:
                 st.dataframe(final_table.style.format("{:.4f}"))
             
                 csv = final_table.to_csv(index=False)
-                st.download_button("📄 Download Metrics as CSV", csv, "resear_
+                st.download_button("📄 Download Metrics as CSV", csv, "research_metrics.csv", "text/csv")
 
 
             
