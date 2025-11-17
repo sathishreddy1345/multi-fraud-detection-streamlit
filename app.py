@@ -168,6 +168,21 @@ if selected_tab in fraud_modules:
             st.error("❌ No models were able to make predictions.")
         else:
             selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
+
+            # -------------------------------------------------
+            # 🧮 Ensemble Score (Weighted or Average)
+            # -------------------------------------------------
+            st.markdown("### 🔰 Ensemble Score (Combined Model Confidence)")
+            
+            # Simple average ensemble (safe for all domains)
+            ensemble_score = sum(model_scores.values()) / len(model_scores)
+            
+            st.metric("Ensemble Fraud Likelihood", f"{ensemble_score * 100:.2f}%")
+            
+            # Show ensemble bar comparison
+            from utils.visualizer import plot_ensemble_score
+            plot_ensemble_score(model_scores, ensemble_score)
+
             if selected_model is None:
                 selected_model = next(iter(model_scores))  # fallback
 
