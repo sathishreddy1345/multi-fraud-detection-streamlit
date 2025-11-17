@@ -181,9 +181,10 @@ if selected_tab in fraud_modules:
             
             # Extract per-row predicted scores
             for m in model_scores.keys():
-                col = f"{m}_score"
-                if col in processed.columns:
-                    prediction_df[m] = processed[col].values
+            col = f"{m}_score"
+            if col in scored_df.columns:
+                prediction_df[m] = scored_df[col].values
+
             
             # If no per-row scores found, fallback
             if prediction_df.empty:
