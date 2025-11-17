@@ -255,7 +255,8 @@ if selected_tab in fraud_modules:
                 model_metrics_table = []
             
                 for m, score_val in model_scores.items():
-                    y_pred_model = (score_val > 0.5).astype(int)
+                    y_pred_model = np.array([1 if score_val > 0.5 else 0] * len(y_true), dtype=int)
+
             
                     metric_row = {
                         "Model": m,
