@@ -211,38 +211,41 @@ if selected_tab in fraud_modules:
                 st.warning("⚠️ Ground truth labels ('actual') were not found. Metrics cannot be computed.")
             else:
                 from sklearn.metrics import (
-                    accuracy_score, precision_score, recall_score,
-                    f1_score, roc_auc_score, confusion_matrix
+                accuracy_score, precision_score, recall_score,
+                f1_score, roc_auc_score, confusion_matrix
+            )
+            
+            # FIX: Force numeric ground truth
+            y_true = processed["actual"].astype(int).to_numpy()
+            
+            # FIX: Expand ensemble prediction and force int dtype
+            y_pred_ensemble = np.array(
+                [1 if ensemble_research > 0.5 else 0] * len(y_true),
+                dtype=int
+            )
+            
+            # FIX: Guarantee equal shape
+            if len(y_true) != len(y_pred_ensemble):
+                raise ValueError("Prediction and ground truth length mismatch.")
+            
+            metrics_ensemble = {
+                "Accuracy": accuracy_score(y_true, y_pred_ensemble),
+                "Precision": precision_score(y_true, y_pred_ensemble, zero_division=0),
+                "Recall": recall_score(y_true, y_pred_ensemble, zero_division=0),
+                "F1 Score": f1_score(y_true, y_pred_ensemble, zero_division=0),
+            }
+            
+            # AUC
+            try:
+                metrics_ensemble["AUC-ROC"] = roc_auc_score(
+                    y_true,
+                    np.array([ensemble_research] * len(y_true), dtype=float)
                 )
+            except:
+                metrics_ensemble["AUC-ROC"] = "N/A"
             
-                # -------------------------
-                # Ground truth
-                # -------------------------
-                y_true = processed["actual"].astype(int)
-            
-                # -------------------------
-                # Ensemble Prediction (threshold 0.5)
-                # -------------------------
-                y_pred_ensemble = (ensemble_research > 0.5).astype(int)
-            
-                # -------------------------
-                # Compute metrics
-                # -------------------------
-                metrics_ensemble = {
-                    "Accuracy": accuracy_score(y_true, y_pred_ensemble),
-                    "Precision": precision_score(y_true, y_pred_ensemble, zero_division=0),
-                    "Recall": recall_score(y_true, y_pred_ensemble, zero_division=0),
-                    "F1 Score": f1_score(y_true, y_pred_ensemble, zero_division=0)
-                }
-            
-                # AUC only if probability available
-                try:
-                    metrics_ensemble["AUC-ROC"] = roc_auc_score(y_true, np.ones(len(y_true)) * ensemble_research)
-                except:
-                    metrics_ensemble["AUC-ROC"] = "N/A"
-            
-                st.markdown("### 📘 Ensemble Metrics")
-                st.json(metrics_ensemble)
+            st.json(metrics_ensemble)
+
             
                 # ---------------------------------------------------------
                 # 🔥 Model-wise Research Metrics (Optional But Valuable)
