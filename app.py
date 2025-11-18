@@ -18,6 +18,17 @@ from utils.visualizer import (
     plot_boxplot, plot_radar, download_model_report, plot_correlation_heatmap
 )
 
+import json
+
+def load_metrics():
+    try:
+        with open("metrics/credit_card_metrics.json") as f:
+            return json.load(f)
+    except Exception as e:
+        print("❌ Could not load metrics:", e)
+        return {}
+
+
 # Page setup
 st.set_page_config(page_title="🛡️ Multi-Fraud Detection System", layout="wide", page_icon="🧠")
 
@@ -247,35 +258,7 @@ if selected_tab in fraud_modules:
                 st.json(metrics_ensemble)
 
             
-                # ---------------------------------------------------------
-                # 🔥 Model-wise Research Metrics (Optional But Valuable)
-                # ---------------------------------------------------------
-                st.markdown("### 🔬 Model-wise Metrics")
-            
-                model_metrics_table = []
-            
-                for m, score_val in model_scores.items():
-                    y_pred_model = np.array([1 if score_val > 0.5 else 0] * len(y_true), dtype=int)
-
-            
-                    metric_row = {
-                        "Model": m,
-                        "Accuracy": accuracy_score(y_true, y_pred_model),
-                        "Precision": precision_score(y_true, y_pred_model, zero_division=0),
-                        "Recall": recall_score(y_true, y_pred_model, zero_division=0),
-                        "F1 Score": f1_score(y_true, y_pred_model, zero_division=0)
-                    }
-            
-                    try:
-                        metric_row["AUC-ROC"] = roc_auc_score(y_true, np.ones(len(y_true)) * score_val)
-                    except:
-                        metric_row["AUC-ROC"] = "N/A"
-            
-                    model_metrics_table.append(metric_row)
-            
-                df_model_metrics = pd.DataFrame(model_metrics_table)
-                st.dataframe(df_model_metrics.style.format("{:.4f}"))
-            
+              
                 # ---------------------------------------------------------
                 # 📊 Confusion Matrix for Ensemble
                 # ---------------------------------------------------------
@@ -285,6 +268,58 @@ if selected_tab in fraud_modules:
                 cm_df = pd.DataFrame(cm, index=["Actual 0", "Actual 1"], columns=["Pred 0", "Pred 1"])
             
                 st.dataframe(cm_df.style.background_gradient(cmap="rocket_r"))
+
+
+                metrics = load_metrics()
+
+                if not metrics:
+                    st.error("Metrics file not found. Please upload retrained metrics JSON.")
+                else:
+                    st.subheader("📊 Credit Card Fraud Model Metrics")
+                
+                    model_list = {
+                        "Random Forest": "rf",
+                        "XGBoost": "xgb",
+                        "CatBoost": "cat",
+                        "Logistic Regression": "lr",
+                        "IsolationForest": "iso"
+                    }
+                
+                    selected_model_name = st.selectbox("Select Model", list(model_list.keys()))
+                    key = model_list[selected_model_name]
+                
+                    model_metrics = metrics.get(key, None)
+                
+                    if not model_metrics:
+                        st.error(f"No metrics found for model: {selected_model_name}")
+                    else:
+                        st.success(f"Showing metrics for: {selected_model_name}")
+                
+                        st.markdown("### 🧮 Performance Metrics")
+                
+                        col1, col2, col3 = st.columns(3)
+                        col1.metric("Accuracy", f"{model_metrics['accuracy']:.4f}")
+                        col2.metric("Precision", f"{model_metrics['precision']:.4f}")
+                        col3.metric("Recall", f"{model_metrics['recall']:.4f}")
+                
+                        col4, col5 = st.columns(2)
+                        col4.metric("F1 Score", f"{model_metrics['f1']:.4f}")
+                
+                        roc = model_metrics.get("roc_auc")
+                        if roc is not None:
+                            col5.metric("ROC-AUC", f"{roc:.4f}")
+                        else:
+                            col5.metric("ROC-AUC", "N/A")
+                
+                        # Confusion Matrix
+                        st.markdown("### 🔲 Confusion Matrix")
+                        cm = model_metrics["confusion_matrix"]
+                        st.write(pd.DataFrame(cm, columns=["Pred 0", "Pred 1"], index=["Actual 0", "Actual 1"]))
+                
+                        # Classification Report
+                        st.markdown("### 📄 Classification Report")
+                        st.text(model_metrics["classification_report"])
+
             
                 # ---------------------------------------------------------
                 # 📑 Downloadable Table for Research Paper
