@@ -335,6 +335,14 @@ if selected_tab in fraud_modules:
                     "🏦 Loan": "loan",
                     "🚗 Insurance": "insurance"
                 }
-                plot_permutation_importance(module_map[selected_tab])
+                try:
+                    model_to_use = list(fraud_modules[selected_tab].models_full.values())[0]  # first model (RF)
+                    y_true = df["actual"] if "actual" in df.columns else None
+                
+                    if y_true is not None:
+                        plot_permutation_importance(model_to_use, processed.drop(columns=["actual"], errors="ignore"), y_true)
+                except Exception as e:
+                    st.warning(f"⚠️ Permutation importance failed: {e}")
+
             except:
                 pass
