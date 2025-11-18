@@ -211,63 +211,7 @@ if selected_tab in fraud_modules:
 
 
 
-                        # ============================================================
-            # 📊 Full Research Evaluation Block (All Metrics)
-            # ============================================================
-            
-            st.markdown("---")
-            st.markdown("## 🧪 Research Evaluation Metrics")
-            
-            if "actual" not in processed.columns:
-                st.warning("⚠️ Ground truth labels ('actual') were not found. Metrics cannot be computed.")
-            else:
-                from sklearn.metrics import (
-                accuracy_score, precision_score, recall_score,
-                f1_score, roc_auc_score, confusion_matrix
-            )
-            
-            # FIX: Force numeric ground truth
-                y_true = processed["actual"].astype(int).to_numpy()
-                
-                # FIX: Expand ensemble prediction and force int dtype
-                y_pred_ensemble = np.array(
-                    [1 if ensemble_research > 0.5 else 0] * len(y_true),
-                    dtype=int
-                )
-                
-                # FIX: Guarantee equal shape
-                if len(y_true) != len(y_pred_ensemble):
-                    raise ValueError("Prediction and ground truth length mismatch.")
-                
-                metrics_ensemble = {
-                    "Accuracy": accuracy_score(y_true, y_pred_ensemble),
-                    "Precision": precision_score(y_true, y_pred_ensemble, zero_division=0),
-                    "Recall": recall_score(y_true, y_pred_ensemble, zero_division=0),
-                    "F1 Score": f1_score(y_true, y_pred_ensemble, zero_division=0),
-                }
-                
-                # AUC
-                try:
-                    metrics_ensemble["AUC-ROC"] = roc_auc_score(
-                        y_true,
-                        np.array([ensemble_research] * len(y_true), dtype=float)
-                    )
-                except:
-                    metrics_ensemble["AUC-ROC"] = "N/A"
-                
-                st.json(metrics_ensemble)
-
-            
               
-                # ---------------------------------------------------------
-                # 📊 Confusion Matrix for Ensemble
-                # ---------------------------------------------------------
-                st.markdown("### 📉 Ensemble Confusion Matrix")
-            
-                cm = confusion_matrix(y_true, y_pred_ensemble)
-                cm_df = pd.DataFrame(cm, index=["Actual 0", "Actual 1"], columns=["Pred 0", "Pred 1"])
-            
-                st.dataframe(cm_df.style.background_gradient(cmap="rocket_r"))
 
 
                 metrics = load_metrics()
@@ -321,18 +265,6 @@ if selected_tab in fraud_modules:
                         st.text(model_metrics["classification_report"])
 
             
-                # ---------------------------------------------------------
-                # 📑 Downloadable Table for Research Paper
-                # ---------------------------------------------------------
-                st.markdown("### 📥 Download Research Metrics Table")
-                
-                final_table = df_model_metrics.copy()
-                final_table.loc[len(final_table)] = ["Ensemble"] + list(metrics_ensemble.values())
-            
-                st.dataframe(final_table.style.format("{:.4f}"))
-            
-                csv = final_table.to_csv(index=False)
-                st.download_button("📄 Download Metrics as CSV", csv, "research_metrics.csv", "text/csv")
 
 
             
