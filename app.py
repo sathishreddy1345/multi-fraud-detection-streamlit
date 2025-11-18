@@ -297,7 +297,8 @@ if selected_tab in fraud_modules:
                 "ROC-AUC":   data["roc_auc"]
             } for m, data in ranking])
 
-            st.dataframe(rank_df.style.format("{:.4f}"))
+            st.dataframe(rank_df.style.format(lambda x: f"{x:.4f}" if isinstance(x, (int, float)) else x))
+
 
         st.markdown("---")
 
