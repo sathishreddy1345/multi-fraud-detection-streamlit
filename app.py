@@ -22,7 +22,7 @@ import json
 
 def load_metrics():
     try:
-        with open("metrics/credit_card_metrics.json") as f:
+        with open("models/credit_card_metrics.json") as f:
             return json.load(f)
     except Exception as e:
         print("❌ Could not load metrics:", e)
