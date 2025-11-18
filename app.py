@@ -25,14 +25,13 @@ def load_metrics():
         with open("models/credit_card_metrics.json") as f:
             return json.load(f)
     except Exception as e:
-        print("❌ Could not load metrics:", e)
+        print("❌ Metrics load error:", e)
         return {}
-
 
 # Page setup
 st.set_page_config(page_title="🛡️ Multi-Fraud Detection System", layout="wide", page_icon="🧠")
 
-# 🎨 Styling
+# Styling
 st.markdown("""
 <style>
 body {
@@ -41,24 +40,16 @@ body {
     animation: gradient 20s ease infinite;
     color: #f5f5f5;
 }
-@keyframes gradient {
-    0% {background-position: 0% 50%;}
-    50% {background-position: 100% 50%;}
-    100% {background-position: 0% 50%;}
-}
 .block-container {
     backdrop-filter: blur(8px);
     background-color: rgba(0, 0, 0, 0.25);
     border-radius: 20px;
     padding: 2rem;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
 </style>
 """, unsafe_allow_html=True)
 
-# --------------------------
-# Session Management for Tab
-# --------------------------
+# Tabs
 tabs = ["🏠 Home", "💳 Credit Card", "📱 PaySim", "🏦 Loan", "🚗 Insurance"]
 
 if "selected_tab" not in st.session_state:
@@ -66,11 +57,8 @@ if "selected_tab" not in st.session_state:
 
 selected_tab = st.sidebar.radio("Select Fraud Type", tabs, index=tabs.index(st.session_state["selected_tab"]))
 
-# --------------------------
-# Sidebar Info & Reset
-# --------------------------
+# Sidebar
 st.sidebar.title("🧭 Navigation Panel")
-
 if "Model Info" not in st.session_state:
     st.session_state["Model Info"] = {
         "💳 Credit Card": "RandomForest, XGBoost, CatBoost, Logistic Regression, IsolationForest",
@@ -79,7 +67,7 @@ if "Model Info" not in st.session_state:
         "🚗 Insurance": "CatBoost + Random Forest"
     }
 
-with st.sidebar.expander("📘 Model Details", expanded=False):
+with st.sidebar.expander("📘 Model Details"):
     for model, desc in st.session_state["Model Info"].items():
         st.markdown(f"**{model}**: {desc}")
 
@@ -87,9 +75,7 @@ if st.sidebar.button("🔁 Reset App"):
     st.session_state.clear()
     st.experimental_rerun()
 
-# --------------------------
-# Fraud Module Mapping
-# --------------------------
+# Module maps
 fraud_modules = {
     "💳 Credit Card": credit_card,
     "📱 PaySim": paysim,
@@ -103,225 +89,140 @@ function_map = {
     "🚗 Insurance": "predict_insurance_fraud"
 }
 
-# --------------------------
-# Home Page
-# --------------------------
+# HOME PAGE
 if selected_tab == "🏠 Home":
     st.title("🛡️ Multi-Fraud Detection Dashboard")
-    st.markdown("Choose a fraud type from the sidebar or buttons below to start detection.")
+    st.markdown("Choose a fraud type from the sidebar or buttons below.")
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💳 Credit Card Fraud"):
-            st.session_state["selected_tab"] = "💳 Credit Card"
-            st.experimental_rerun()
-        if st.button("🏦 Loan Fraud"):
-            st.session_state["selected_tab"] = "🏦 Loan"
-            st.experimental_rerun()
+        if st.button("💳 Credit Card Fraud"): st.session_state["selected_tab"] = "💳 Credit Card"; st.experimental_rerun()
+        if st.button("🏦 Loan Fraud"): st.session_state["selected_tab"] = "🏦 Loan"; st.experimental_rerun()
     with col2:
-        if st.button("📱 PaySim Fraud"):
-            st.session_state["selected_tab"] = "📱 PaySim"
-            st.experimental_rerun()
-        if st.button("🚗 Insurance Fraud"):
-            st.session_state["selected_tab"] = "🚗 Insurance"
-            st.experimental_rerun()
+        if st.button("📱 PaySim Fraud"): st.session_state["selected_tab"] = "📱 PaySim"; st.experimental_rerun()
+        if st.button("🚗 Insurance Fraud"): st.session_state["selected_tab"] = "🚗 Insurance"; st.experimental_rerun()
 
-# --------------------------
-# Prediction Pages
-# --------------------------
+
+# =============================
+#   PREDICTION PAGES
+# =============================
 if selected_tab in fraud_modules:
     st.title(f"{selected_tab} Detection")
-    uploaded = st.file_uploader("📤 Upload a CSV file for analysis", type="csv")
+    uploaded = st.file_uploader("📤 Upload CSV", type="csv")
 
     if uploaded:
         df = pd.read_csv(uploaded, thousands=",")
-        # 🧼 Force numeric conversion for all columns
         for col in df.columns:
             if df[col].dtype == object:
-                # Try to clean numeric-looking strings
                 cleaned = df[col].astype(str).str.replace(",", "").str.replace("₹", "")
-                try:
-                    df[col] = pd.to_numeric(cleaned)
-                except:
-                    df[col] = cleaned  # keep as string if not numeric
+                try: df[col] = pd.to_numeric(cleaned)
+                except: df[col] = cleaned
 
-
-        # Drop any remaining non-numeric or fully empty columns
         df = df.dropna(axis=1, how="all")
-
-
         edited_df = st.data_editor(df.head(50), use_container_width=True, num_rows="dynamic", key="editor_input")
 
         if st.button("🔍 Run AI Fraud Detection"):
             df = edited_df
-            with st.spinner("Analyzing... please wait ⏳"):
-                time.sleep(1)
-                fn = function_map[selected_tab]
+            with st.spinner("Analyzing..."):
                 try:
+                    fn = function_map[selected_tab]
                     score, model_scores, processed = getattr(fraud_modules[selected_tab], fn)(df)
-                    st.session_state["model_scores"] = model_scores
-                    st.session_state["score"] = score
-                    st.session_state["processed"] = processed
-                    st.session_state["uploaded_df"] = df
                 except Exception as e:
-                    import traceback
-                    traceback.print_exc()
-                    st.error(f"❌ Prediction failed: {e}")
+                    st.error(f"Prediction failed: {e}")
                     st.stop()
 
-    # Display results if available
+                st.session_state["model_scores"] = model_scores
+                st.session_state["score"] = score
+                st.session_state["processed"] = processed
+                st.session_state["uploaded_df"] = df
+
+    # Show results
     if "model_scores" in st.session_state and st.session_state["selected_tab"] == selected_tab:
+
         model_scores = st.session_state["model_scores"]
         score = st.session_state["score"]
         processed = st.session_state["processed"]
         df = st.session_state["uploaded_df"]
 
-        if not model_scores:
-            st.error("❌ No models were able to make predictions.")
-        else:
-            selected_model = plot_bar(model_scores, key=f"{selected_tab}_bar")
-                    # ============================================================
-            # 🔥 Research-Grade Ensemble (Soft Voting, No Normalization)
-            # ============================================================
-            
-            import numpy as np
-            
-            st.markdown("## 🔍 Research Ensemble Score (Soft Voting)")
-            
-            model_list = list(model_scores.keys())
-            scores_array = np.array(list(model_scores.values()))
-            
-            # Equal weights for all models (standard)
-            weights = np.ones(len(model_list))
-            
-            # Weighted soft vote
-            ensemble_research = np.sum(weights * scores_array) / np.sum(weights)
-            
-            st.metric("📌 Research Ensemble Fraud Likelihood", f"{ensemble_research * 100:.2f}%")
-            
-            # Table for paper
-            df_w = pd.DataFrame({
-                "Model": model_list,
-                "Prediction Score": scores_array,
-                "Weight": weights
-            })
-            
-            st.markdown("### 📑 Ensemble Table (Use in Research Paper)")
-            st.dataframe(df_w.style.format({"Prediction Score": "{:.4f}", "Weight": "{:.2f}"}))
+        st.markdown("## 🔍 Research Ensemble Score (Soft Voting)")
+        model_list = list(model_scores.keys())
+        scores_array = np.array(list(model_scores.values()))
+        weights = np.ones(len(model_list))
+        ensemble_research = np.sum(weights * scores_array) / np.sum(weights)
+        st.metric("📌 Ensemble Fraud Likelihood", f"{ensemble_research*100:.2f}%")
 
+        # Show ensemble table
+        df_w = pd.DataFrame({"Model": model_list, "Prediction Score": scores_array, "Weight": weights})
+        st.dataframe(df_w.style.format({"Prediction Score": "{:.4f}", "Weight": "{:.2f}"}))
 
+        # ===========================
+        #     METRICS SECTION
+        # ===========================
+        metrics = load_metrics()
 
-              
+        if metrics:
+            st.markdown("## 🏆 Best Model (Based on F1-score)")
+            best_model_key = max(metrics.keys(), key=lambda m: metrics[m]["f1"])
 
+            name_map = {
+                "rf": "Random Forest",
+                "xgb": "XGBoost",
+                "cat": "CatBoost",
+                "lr": "Logistic Regression",
+                "iso": "IsolationForest"
+            }
+            st.success(f"⭐ Best Model: **{name_map[best_model_key]}** — F1 Score: **{metrics[best_model_key]['f1']:.4f}**")
 
-                metrics = load_metrics()
+            st.markdown("---")
+            st.markdown("## 📊 Credit Card Fraud Model Metrics")
 
-                if not metrics:
-                    st.error("Metrics file not found. Please upload retrained metrics JSON.")
-                else:
-                    st.subheader("📊 Credit Card Fraud Model Metrics")
-                
-                    model_list = {
-                        "Random Forest": "rf",
-                        "XGBoost": "xgb",
-                        "CatBoost": "cat",
-                        "Logistic Regression": "lr",
-                        "IsolationForest": "iso"
-                    }
-                
-                    selected_model_name = st.selectbox("Select Model", list(model_list.keys()))
-                    key = model_list[selected_model_name]
-                
-                    model_metrics = metrics.get(key, None)
-                
-                    if not model_metrics:
-                        st.error(f"No metrics found for model: {selected_model_name}")
-                    else:
-                        st.success(f"Showing metrics for: {selected_model_name}")
-                
-                        st.markdown("### 🧮 Performance Metrics")
-                
-                        col1, col2, col3 = st.columns(3)
-                        col1.metric("Accuracy", f"{model_metrics['accuracy']:.4f}")
-                        col2.metric("Precision", f"{model_metrics['precision']:.4f}")
-                        col3.metric("Recall", f"{model_metrics['recall']:.4f}")
-                
-                        col4, col5 = st.columns(2)
-                        col4.metric("F1 Score", f"{model_metrics['f1']:.4f}")
-                
-                        roc = model_metrics.get("roc_auc")
-                        if roc is not None:
-                            col5.metric("ROC-AUC", f"{roc:.4f}")
-                        else:
-                            col5.metric("ROC-AUC", "N/A")
-                
-                        # Confusion Matrix
-                        st.markdown("### 🔲 Confusion Matrix")
-                        cm = model_metrics["confusion_matrix"]
-                        st.write(pd.DataFrame(cm, columns=["Pred 0", "Pred 1"], index=["Actual 0", "Actual 1"]))
-                
-                        # Classification Report
-                        st.markdown("### 📄 Classification Report")
-                        st.text(model_metrics["classification_report"])
+            selected_model_name = st.selectbox("🔽 Select Model", list(name_map.values()))
+            key = {v:k for k,v in name_map.items()}[selected_model_name]
 
-            
+            model_metrics = metrics[key]
 
+            st.markdown("### 🧮 Performance Metrics")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Accuracy", f"{model_metrics['accuracy']:.4f}")
+            col2.metric("Precision", f"{model_metrics['precision']:.4f}")
+            col3.metric("Recall", f"{model_metrics['recall']:.4f}")
 
-            
+            col4, col5 = st.columns(2)
+            col4.metric("F1 Score", f"{model_metrics['f1']:.4f}")
+            col5.metric("ROC-AUC", f"{model_metrics['roc_auc']:.4f}" if model_metrics["roc_auc"] else "N/A")
 
+            st.markdown("### 🔲 Confusion Matrix")
+            cm_df = pd.DataFrame(model_metrics["confusion_matrix"], 
+                                 columns=["Pred 0", "Pred 1"], 
+                                 index=["Actual 0", "Actual 1"])
+            st.dataframe(cm_df)
 
-            if selected_model is None:
-                selected_model = next(iter(model_scores))  # fallback
+            st.markdown("### 📄 Classification Report")
+            st.text(model_metrics["classification_report"])
 
-            all_models = fraud_modules[selected_tab].models
-            default_model = all_models.get("rf") or list(all_models.values())[0]
-            all_models_full = fraud_modules[selected_tab].models_full
-            default_model_full = all_models_full.get("rf") or list(all_models_full.values())[0]
+        # ===========================
+        #   MODEL INSPECTION
+        # ===========================
+        all_models = fraud_modules[selected_tab].models
+        all_models_full = fraud_modules[selected_tab].models_full
 
+        st.success(f"🎯 Overall Fraud Likelihood: {score*100:.2f}%")
 
-            if processed is not None and not processed.isnull().all().all():
-                plot_feature_importance(default_model_full, processed)
+        st.markdown("### 🔬 Explore Individual Model")
+        selected_model = st.selectbox("Choose Model", list(model_scores.keys()))
+        st.metric("Model Score", f"{model_scores[selected_model]*100:.2f}%")
+        st.markdown(get_model_description(selected_model))
 
-                plot_pie_chart(max(score, 0))
-                st.success(f"✅ Overall Fraud Likelihood: **{score * 100:.2f}%**")
+        if processed is not None:
+            plot_feature_importance(all_models_full.get("rf"), processed)
+            plot_pie_chart(max(score,0))
+            plot_radar(model_scores)
+            plot_boxplot(processed)
+            plot_correlation_heatmap(df)
+            download_model_report(processed)
 
-                st.markdown("### 🔬 Explore Individual Model")
-                selected_model = st.selectbox(
-                    "Choose a model",
-                    list(model_scores.keys()),
-                    index=0,
-                    key=f"model_inspector_{selected_tab}"
-                )
-                st.metric("Score", f"{model_scores[selected_model]*100:.2f}%")
-                st.markdown(get_model_description(selected_model))
-
-                # Confusion Matrix
-                if 'actual' in df.columns:
-                    y_true = df['actual']
-                    # Ensemble prediction for each row (same value repeated)
-                    y_pred_ensemble = np.array([1 if ensemble_research > 0.5 else 0] * len(y_true))
-
-                    plot_confusion_report(y_true, y_pred)
-
-                plot_radar(model_scores)
-                plot_boxplot(processed)
-
-
-                plot_correlation_heatmap(df)
-                download_model_report(processed)
-
-                try:
-                    model_object = all_models[selected_model]
-                    y_true = df['actual'] if 'actual' in df.columns else None
-                    module_key_map = {
-                        "💳 Credit Card": "creditcard",
-                        "📱 PaySim": "paysim",
-                        "🏦 Loan": "loan",
-                        "🚗 Insurance": "insurance"
-                                   }
-                    module_name = module_key_map[selected_tab]
-                    plot_permutation_importance(module_name)
-
-
-                except Exception as e:
-                    st.warning(f"⚠️ Permutation importance failed: {e}")
+            try:
+                module_map = {"💳 Credit Card":"creditcard","📱 PaySim":"paysim","🏦 Loan":"loan","🚗 Insurance":"insurance"}
+                plot_permutation_importance(module_map[selected_tab])
+            except:
+                pass
