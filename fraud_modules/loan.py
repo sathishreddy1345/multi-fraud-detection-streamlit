@@ -110,6 +110,24 @@ def predict_loan_fraud(df):
     return final_score, scores, scored_df
 
 
+def get_template_df():
+    """
+    Returns a single-row loan fraud template.
+    """
+    cols = [
+        "income","loan_amount","credit_score",
+        "term","employment_years","age"
+    ]
+
+    df = pd.DataFrame([[0 for _ in cols]], columns=cols)
+
+    for c in cols:
+        df[c] = df[c].astype(float)
+
+    return df
+
+
+
 # -----------------------------
 # 🌐 Expose models
 # -----------------------------
