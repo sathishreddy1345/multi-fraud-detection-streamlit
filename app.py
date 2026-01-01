@@ -126,13 +126,38 @@ if selected_tab == "🏠 Home":
 # -----------------------------------------------------
 # Prediction Pages
 # -----------------------------------------------------
-if selected_tab in fraud_modules:
+module = fraud_modules[selected_tab]
+df = None
 
-    st.title(f"{selected_tab} Detection")
-    uploaded = st.file_uploader("📤 Upload CSV", type="csv")
+input_mode = st.radio(
+    "Choose Input Method",
+    ["📤 Upload CSV File", "🧾 Use Auto-Template (Fill Values)"],
+    horizontal=True
+)
 
+# -------- MODE 1: FILE UPLOAD ----------
+if input_mode == "📤 Upload CSV File":
+    uploaded = st.file_uploader("Upload CSV", type="csv")
     if uploaded:
         df = pd.read_csv(uploaded, thousands=",")
+
+# -------- MODE 2: TEMPLATE ENTRY ----------
+if input_mode == "🧾 Use Auto-Template (Fill Values)":
+    tmpl = module.get_template_df()
+
+    st.info("Template loaded with 0 values. Edit cells to enter your data.")
+    edited_df = st.data_editor(
+        tmpl,
+        use_container_width=True,
+        num_rows="dynamic",
+        key="cc_template_editor"
+    )
+
+    if st.button("➕ Add Row"):
+        edited_df.loc[len(edited_df)] = 0
+
+    df = edited_df
+
         # Clean numeric columns
         for col in df.columns:
             if df[col].dtype == object:
