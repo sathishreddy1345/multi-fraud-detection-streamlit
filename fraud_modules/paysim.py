@@ -71,6 +71,30 @@ def predict_paysim_fraud(df: pd.DataFrame):
     return avg_score, predictions, processed_df
 
 
+
+def get_template_df():
+    """
+    Returns a single-row zero-filled template
+    for PaySim fraud input.
+    """
+    cols = [
+        "type","amount","oldbalanceOrg","newbalanceOrig",
+        "oldbalanceDest","newbalanceDest",
+        "errorBalanceOrig","errorBalanceDest",
+        "balanceChangeOrig","balanceChangeDest",
+        "is_orig_bal_zero","is_dest_bal_zero"
+    ]
+
+    df = pd.DataFrame([[0 for _ in cols]], columns=cols)
+
+    # allow decimal input
+    for c in cols:
+        df[c] = df[c].astype(float)
+
+    return df
+
+
+
 # For app integration
 models = models
 models_full = models_full
