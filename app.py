@@ -125,6 +125,9 @@ if selected_tab == "🏠 Home":
 # =====================================================
 #                 P R E D I C T I O N   P A G E S
 # =====================================================
+# =====================================================
+#                 P R E D I C T I O N   P A G E S
+# =====================================================
 if selected_tab in fraud_modules:
 
     module = fraud_modules[selected_tab]
@@ -145,49 +148,51 @@ if selected_tab in fraud_modules:
         if uploaded:
             df = pd.read_csv(uploaded, thousands=",")
 
-    # ---------- MODE 2: Auto Template ----------
+            # Allow editing for uploaded data
+            df = st.data_editor(
+                df.head(50),
+                use_container_width=True,
+                num_rows="dynamic",
+                key="upload_editor"
+            )
+
+    # ---------- MODE 2: Auto Template (Single Row Only) ----------
     if input_mode == "🧾 Use Auto-Template (Fill Values)":
         if hasattr(module, "get_template_df"):
             tmpl = module.get_template_df()
 
-            st.info("Template loaded with 0 values. Edit cells to enter your data.")
-            edited_df = st.data_editor(
+            # Force exactly one row
+            tmpl = tmpl.iloc[:1].copy()
+
+            st.info("Enter values in this row. Only one record is allowed.")
+            df = st.data_editor(
                 tmpl,
                 use_container_width=True,
-                num_rows="dynamic",
+                num_rows=1,                  # 🔒 prevents extra rows
                 key=f"{selected_tab}_template_editor"
             )
-
-            if st.button("➕ Add Row"):
-                edited_df.loc[len(edited_df)] = 0
-
-            df = edited_df
         else:
             st.error("Template not available for this module.")
 
-    # ---------- COMMON CLEAN → EDIT → RUN ----------
+    # ---------- CLEAN → CONVERT FLOATS → RUN ----------
     if df is not None:
 
-        # Clean numeric compatibility
+        # Support decimal / float values
         for col in df.columns:
-            if df[col].dtype == object:
-                cleaned = df[col].astype(str).str.replace(",", "").str.replace("₹", "")
-                try:
-                    df[col] = pd.to_numeric(cleaned)
-                except:
-                    df[col] = cleaned
+            cleaned = (
+                df[col].astype(str)
+                      .str.replace(",", "")
+                      .str.replace("₹", "")
+                      .str.strip()
+            )
+            try:
+                df[col] = cleaned.astype(float)
+            except:
+                pass
 
         df = df.dropna(axis=1, how="all")
 
-        edited_df = st.data_editor(
-            df.head(50),
-            use_container_width=True,
-            num_rows="dynamic",
-            key="editor_input"
-        )
-
         if st.button("🔍 Run AI Fraud Detection"):
-            df = edited_df
             with st.spinner("Analyzing..."):
                 try:
                     fn = function_map[selected_tab]
