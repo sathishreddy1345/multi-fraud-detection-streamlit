@@ -149,12 +149,20 @@ if selected_tab in fraud_modules:
             df = pd.read_csv(uploaded, thousands=",")
 
             # Allow editing for uploaded data
+            for c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="ignore")
+
             df = st.data_editor(
                 df.head(50),
                 use_container_width=True,
                 num_rows="dynamic",
-                key="upload_editor"
+                key="upload_editor",
+                column_config={
+                    col: st.column_config.NumberColumn(step=0.01)
+                    for col in df.columns
+                }
             )
+
 
     # ---------- MODE 2: Auto Template (Single Row Only) ----------
     if input_mode == "🧾 Use Auto-Template (Fill Values)":
