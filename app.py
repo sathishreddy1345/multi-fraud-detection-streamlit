@@ -126,37 +126,47 @@ if selected_tab == "🏠 Home":
 # -----------------------------------------------------
 # Prediction Pages
 # -----------------------------------------------------
-module = fraud_modules[selected_tab]
-df = None
+# -----------------------------------------------------
+# Prediction Pages
+# -----------------------------------------------------
+if selected_tab in fraud_modules:
 
-input_mode = st.radio(
-    "Choose Input Method",
-    ["📤 Upload CSV File", "🧾 Use Auto-Template (Fill Values)"],
-    horizontal=True
-)
+    module = fraud_modules[selected_tab]
+    df = None
 
-# -------- MODE 1: FILE UPLOAD ----------
-if input_mode == "📤 Upload CSV File":
-    uploaded = st.file_uploader("Upload CSV", type="csv")
-    if uploaded:
-        df = pd.read_csv(uploaded, thousands=",")
+    st.title(f"{selected_tab} Detection")
 
-# -------- MODE 2: TEMPLATE ENTRY ----------
-if input_mode == "🧾 Use Auto-Template (Fill Values)":
-    tmpl = module.get_template_df()
-
-    st.info("Template loaded with 0 values. Edit cells to enter your data.")
-    edited_df = st.data_editor(
-        tmpl,
-        use_container_width=True,
-        num_rows="dynamic",
-        key="cc_template_editor"
+    input_mode = st.radio(
+        "Choose Input Method",
+        ["📤 Upload CSV File", "🧾 Use Auto-Template (Fill Values)"],
+        horizontal=True
     )
 
-    if st.button("➕ Add Row"):
-        edited_df.loc[len(edited_df)] = 0
+    # -------- MODE 1: FILE UPLOAD ----------
+    if input_mode == "📤 Upload CSV File":
+        uploaded = st.file_uploader("Upload CSV", type="csv")
+        if uploaded:
+            df = pd.read_csv(uploaded, thousands=",")
 
-    df = edited_df
+    # -------- MODE 2: TEMPLATE ENTRY ----------
+    if input_mode == "🧾 Use Auto-Template (Fill Values)":
+        tmpl = module.get_template_df()
+
+        st.info("Template loaded with 0 values. Edit the cells to enter your data.")
+        edited_df = st.data_editor(
+            tmpl,
+            use_container_width=True,
+            num_rows="dynamic",
+            key=f"{selected_tab}_template_editor"
+        )
+
+        if st.button("➕ Add Row"):
+            edited_df.loc[len(edited_df)] = 0
+
+        df = edited_df
+
+    # ---------- COMMON CLEANING + EDIT + RUN ----------
+    if df is not None:
 
         # Clean numeric columns
         for col in df.columns:
@@ -169,8 +179,12 @@ if input_mode == "🧾 Use Auto-Template (Fill Values)":
 
         df = df.dropna(axis=1, how="all")
 
-        edited_df = st.data_editor(df.head(50), use_container_width=True,
-                                   num_rows="dynamic", key="editor_input")
+        edited_df = st.data_editor(
+            df.head(50),
+            use_container_width=True,
+            num_rows="dynamic",
+            key="editor_input"
+        )
 
         if st.button("🔍 Run AI Fraud Detection"):
             df = edited_df
@@ -178,7 +192,9 @@ if input_mode == "🧾 Use Auto-Template (Fill Values)":
                 try:
                     fn = function_map[selected_tab]
                     score, model_scores, processed = getattr(
-                        fraud_modules[selected_tab], fn)(df)
+                        module, fn
+                    )(df)
+
                 except Exception as e:
                     st.error(f"Prediction failed: {e}")
                     st.stop()
