@@ -165,12 +165,21 @@ if selected_tab in fraud_modules:
             tmpl = tmpl.iloc[:1].copy()
 
             st.info("Enter values in this row. Only one record is allowed.")
+            # force all numeric columns to float so decimals are allowed
+            for c in tmpl.columns:
+                tmpl[c] = tmpl[c].astype(float)
+            
             df = st.data_editor(
                 tmpl,
                 use_container_width=True,
-                num_rows=1,                  # 🔒 prevents extra rows
-                key=f"{selected_tab}_template_editor"
+                num_rows=1,
+                key=f"{selected_tab}_template_editor",
+                column_config={
+                    col: st.column_config.NumberColumn(step=0.01)  # ✅ allows decimals
+                    for col in tmpl.columns
+                }
             )
+
         else:
             st.error("Template not available for this module.")
 
