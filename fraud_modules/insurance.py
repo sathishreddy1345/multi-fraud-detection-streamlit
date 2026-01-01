@@ -132,6 +132,32 @@ def predict_insurance_fraud(df):
 
     return final_score, scores, scored_df
 
+def get_template_df():
+    """
+    Returns a single-row insurance fraud template.
+    """
+    cols = [
+        "months_as_customer","age","policy_state",
+        "policy_deductible","policy_annual_premium",
+        "umbrella_limit","auto_make","auto_year",
+        "total_claim_amount","vehicle_claim"
+    ]
+
+    df = pd.DataFrame([[0 for _ in cols]], columns=cols)
+
+    # numeric → float, categorical stays string
+    numeric_cols = [
+        "months_as_customer","age","policy_deductible",
+        "policy_annual_premium","umbrella_limit",
+        "auto_year","total_claim_amount","vehicle_claim"
+    ]
+
+    for c in numeric_cols:
+        df[c] = df[c].astype(float)
+
+    return df
+
+
 # -----------------------------
 # 📦 Export cleaned model dict
 # -----------------------------
