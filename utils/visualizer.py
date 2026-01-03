@@ -387,7 +387,7 @@ def plot_correlation_heatmap(df=None, module=None):
 # ⬇️ Download Report
 # ------------------------------
 def download_model_report(df, filename="fraud_report.csv"):
-    st.download_button("⬇️ Download Model Report CSV", data=df.to_csv(index=False).encode(), file_name=filename, mime="text/csv")
+    st.download_button("⬇️ Download Model dataset CSV", data=df.to_csv(index=False).encode(), file_name=filename, mime="text/csv")
 
 # ------------------------------
 # 🧾 Model Descriptions
