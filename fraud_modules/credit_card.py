@@ -60,7 +60,7 @@ def predict_creditcard_fraud(df):
     print(f"📊 Input shape after cleaning: {df.shape}")
     print(f"📊 Columns: {list(df.columns)}")
 
-        scores = {}
+    scores = {}
     scored_df = df.copy()
 
     THRESHOLD = 0.25   # ⚡ operating threshold (tuned for recall)
@@ -119,9 +119,6 @@ def predict_creditcard_fraud(df):
     )
 
     avg_score = scored_df["ensemble_prob"].mean()
-
-
-    avg_score = np.mean(list(scores.values()))
 
     if "actual" in df.columns:
         scored_df["actual"] = df["actual"].values
