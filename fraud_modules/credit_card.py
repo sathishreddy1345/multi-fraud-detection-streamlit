@@ -60,8 +60,10 @@ def predict_creditcard_fraud(df):
     print(f"📊 Input shape after cleaning: {df.shape}")
     print(f"📊 Columns: {list(df.columns)}")
 
-    scores = {}
+        scores = {}
     scored_df = df.copy()
+
+    THRESHOLD = 0.25   # ⚡ operating threshold (tuned for recall)
 
     for name, (pipe, _) in models.items():
         try:
@@ -70,14 +72,31 @@ def predict_creditcard_fraud(df):
             if name == "iso":
                 preds = -pipe.decision_function(df)
                 norm = (preds - preds.min()) / (preds.max() - preds.min() + 1e-9)
-                scored_df[f"{name}_score"] = norm
-                scores[name] = norm.mean()
+                proba = norm
             else:
-                preds = pipe.predict_proba(df)[:, 1]
-                scored_df[f"{name}_score"] = preds
-                scores[name] = preds.mean()
+                proba = pipe.predict_proba(df)[:, 1]
 
-            print(f"✅ {name} score: {scores[name]:.4f}")
+            # 👉 Keep true probability (model output)
+            scored_df[f"{name}_prob"] = proba.round(4)
+
+            # 👉 Human-friendly Risk Score (0–100) — NOT fake
+            risk_score = (proba * 100).clip(0, 100)
+            scored_df[f"{name}_risk_score"] = risk_score.round(2)
+
+            # 👉 Risk Levels for UI / Charts
+            scored_df[f"{name}_risk_level"] = pd.cut(
+                risk_score,
+                bins=[0, 20, 50, 100],
+                labels=["Low", "Medium", "High"]
+            )
+
+            # 👉 Model decision using tuned threshold
+            scored_df[f"{name}_flag"] = (proba >= THRESHOLD).astype(int)
+
+            # 👉 Model-level summary score
+            scores[name] = proba.mean()
+
+            print(f"✅ {name} avg prob={scores[name]:.4f}")
 
         except Exception as e:
             print(f"❌ Error in model {name}: {e}")
@@ -85,6 +104,22 @@ def predict_creditcard_fraud(df):
 
     if not scores:
         raise ValueError("❌ No models could predict. (Check model load or input shape)")
+
+    # -------------------------
+    # 🧮 Ensemble Aggregation
+    # -------------------------
+    scored_df["ensemble_prob"] = scored_df[[f"{m}_prob" for m in scores]].mean(axis=1)
+    scored_df["ensemble_risk_score"] = (scored_df["ensemble_prob"] * 100).round(2)
+    scored_df["ensemble_flag"] = (scored_df["ensemble_prob"] >= THRESHOLD).astype(int)
+
+    scored_df["ensemble_risk_level"] = pd.cut(
+        scored_df["ensemble_risk_score"],
+        bins=[0, 20, 50, 100],
+        labels=["Low", "Medium", "High"]
+    )
+
+    avg_score = scored_df["ensemble_prob"].mean()
+
 
     avg_score = np.mean(list(scores.values()))
 
