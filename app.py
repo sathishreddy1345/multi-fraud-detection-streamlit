@@ -279,7 +279,20 @@ if "model_scores" in st.session_state and st.session_state["selected_tab"] == se
     st.markdown("---")
 
     # ---------- Model Inspection ----------
-    st.success(f"🎯 Overall Fraud Likelihood: **{score*100:.2f}%**")
+    # --- New Risk Output from upgraded backend ---
+    risk_score = processed["ensemble_risk_score"].iloc[0]
+    risk_level = processed["ensemble_risk_level"].iloc[0]
+    fraud_flag = processed["ensemble_flag"].iloc[0]
+    
+    st.subheader("🧠 Final Ensemble Decision")
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Risk Score (0-100)", f"{risk_score:.2f}")
+    col2.metric("Risk Level", str(risk_level))
+    col3.metric("Fraud Flag", "⚠️ Review" if fraud_flag == 1 else "✔️ Normal")
+    
+    st.info(f"Decision Threshold: 0.25  •  Ensemble Probability: {processed['ensemble_prob'].iloc[0]:.4f}")
+
 
     st.markdown("### 🔬 Explore Individual Model")
     inspect_model = st.selectbox("Choose model", list(model_scores.keys()))
