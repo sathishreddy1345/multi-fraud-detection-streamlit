@@ -280,6 +280,8 @@ if "model_scores" in st.session_state and st.session_state["selected_tab"] == se
 
     # ---------- Model Inspection ----------
     # --- New Risk Output from upgraded backend ---
+    st.write("DEBUG columns:", list(processed.columns))
+
     risk_score = processed["ensemble_risk_score"].iloc[0]
     risk_level = processed["ensemble_risk_level"].iloc[0]
     fraud_flag = processed["ensemble_flag"].iloc[0]
